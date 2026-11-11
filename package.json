@@ -1,0 +1,9 @@
+{
+  "name": "kk-grosir-development",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "preview": "node scripts/preview.cjs"
+  },
+  "devDependencies": { "playwright": "1.57.0" }
+}
