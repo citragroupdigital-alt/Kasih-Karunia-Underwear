@@ -21,6 +21,16 @@ const path = require('node:path');
       assert.equal(await page.locator('.kkg-product').count(),5);
       assert.equal(await page.locator('.kkg-stats strong').allTextContents().then(x=>x.join('|')),'70.000+|2.000+|40.000+');
       assert.equal((await page.locator('#kkg-faq-title').innerText()).replace(/\s+/g,' ').trim(),'Sebelum mulai kulakan.');
+      const fontState=await page.evaluate(async()=>{
+        await document.fonts.ready;
+        const loaded=Array.from(document.fonts).some(f=>f.family.replace(/['"]/g,'')==='Inter'&&f.status==='loaded');
+        const h1Font=getComputedStyle(document.querySelector('h1')).fontFamily;
+        const bodyFont=getComputedStyle(document.querySelector('.kkg-root')).fontFamily;
+        return {loaded,h1Font,bodyFont};
+      });
+      assert.equal(fontState.loaded,true,'Inter webfont loaded');
+      assert.match(fontState.h1Font,/\bInter\b/);
+      assert.match(fontState.bodyFont,/\bInter\b/);
       const logos=await page.evaluate(()=>Array.from(document.querySelectorAll('.kkg-logo')).map(el=>({ok:el.complete&&el.naturalWidth===640&&el.naturalHeight===480})));
       assert.equal(logos.length,2,'header and footer logos');
       assert.equal(logos.every(l=>l.ok),true,'logos loaded');

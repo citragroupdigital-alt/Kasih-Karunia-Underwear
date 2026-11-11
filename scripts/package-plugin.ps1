@@ -9,7 +9,7 @@ $sourcePath = (Resolve-Path -LiteralPath $Source).Path
 $destPath = [IO.Path]::GetFullPath((Join-Path (Get-Location) $Destination))
 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destPath)) | Out-Null
 if (Test-Path -LiteralPath $destPath) { Remove-Item -LiteralPath $destPath -Force }
-$allowedExt = @('.php', '.css', '.js', '.webp')
+$allowedExt = @('.php', '.css', '.js', '.webp', '.woff2', '.txt')
 $textExt = @('.php', '.css', '.js')
 $zip = [IO.Compression.ZipFile]::Open($destPath, [IO.Compression.ZipArchiveMode]::Create)
 $count = 0
