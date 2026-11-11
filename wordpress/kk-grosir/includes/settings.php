@@ -13,6 +13,21 @@ function kkg_settings() {
     ), (array) get_option('kkg_settings', array()));
 }
 
+function kkg_bundled_asset($key) {
+    $map = array(
+        'logo' => array('rel' => 'assets/logo-kk.webp', 'width' => 640, 'height' => 480),
+        'hero' => array('rel' => 'assets/hero-kk.webp', 'width' => 1200, 'height' => 1200),
+        'about' => array('rel' => 'assets/about-gudang-kk.webp', 'width' => 960, 'height' => 1192),
+        'category_0' => array('rel' => 'assets/category-0-bra-wanita.webp', 'width' => 826, 'height' => 1026),
+        'category_1' => array('rel' => 'assets/category-1-cd-pria.webp', 'width' => 826, 'height' => 1026),
+        'category_2' => array('rel' => 'assets/category-2-cd-wanita.webp', 'width' => 826, 'height' => 1026),
+        'category_3' => array('rel' => 'assets/category-3-kaos-kaki.webp', 'width' => 826, 'height' => 1026),
+        'category_4' => array('rel' => 'assets/category-4-handuk.webp', 'width' => 826, 'height' => 1026),
+    );
+    if (!isset($map[$key])) { return null; }
+    return file_exists(KKG_DIR . $map[$key]['rel']) ? $map[$key] : null;
+}
+
 function kkg_release_blockers($s) {
     $errors = array();
     foreach (array('privacy_reviewed', 'claims_reviewed', 'assets_reviewed', 'release_reviewed') as $key) {
@@ -22,10 +37,9 @@ function kkg_release_blockers($s) {
     if (!$s['page_id'] || get_post_field('post_name', $s['page_id']) !== 'grosir' ||
         !has_shortcode(get_post_field('post_content', $s['page_id']), 'kk_grosir')) { $errors[] = 'Halaman grosir + shortcode'; }
     if (!get_privacy_policy_url()) { $errors[] = 'Privacy Policy'; }
-    if (!$s['address']) { $errors[] = 'Alamat terverifikasi'; }
     if ($s['consent_mode'] === 'disabled') { $errors[] = 'Adapter CMP atau consent hasil audit'; }
     foreach (array('logo', 'hero', 'about', 'category_0', 'category_1', 'category_2', 'category_3', 'category_4') as $key) {
-        if ($key === 'logo' && file_exists(KKG_DIR . 'assets/logo-kk.webp')) { continue; }
+        if (kkg_bundled_asset($key)) { continue; }
         if (!wp_attachment_is_image($s[$key])) { $errors[] = 'Aset ' . $key; }
     }
     return $errors;
@@ -33,6 +47,13 @@ function kkg_release_blockers($s) {
 
 function kkg_admin_menu() {
     add_options_page('KK Grosir', 'KK Grosir', 'manage_options', 'kk-grosir', 'kkg_admin_page');
+}
+
+function kkg_admin_assets($hook) {
+    if ($hook !== 'settings_page_kk-grosir') { return; }
+    wp_enqueue_media();
+    wp_enqueue_style('kk-grosir-admin', KKG_URL . 'assets/admin.css', array(), KKG_VERSION);
+    wp_enqueue_script('kk-grosir-admin', KKG_URL . 'assets/admin.js', array(), KKG_VERSION, true);
 }
 
 function kkg_save_settings() {
@@ -77,11 +98,22 @@ function kkg_handle_erase() {
 function kkg_admin_page() {
     if (!current_user_can('manage_options')) { return; }
     $s = kkg_settings();
+    $blockers = kkg_release_blockers($s);
     echo '<div class="wrap"><h1>KK Grosir</h1><p>Default off. Staging hanya dapat dilihat admin. Jangan centang persetujuan sebelum audit terkait selesai.</p>';
-    echo '<p>Schema: ' . esc_html(get_option('kkg_schema', 'belum dibuat')) .
-        ' · API dibaca terakhir (UTC): ' . esc_html(get_option('kkg_last_sync', 'belum')) .
-        ' · Status: ' . esc_html(get_option('kkg_health', 'OK')) . '</p>';
-    echo '<p>Secret diatur melalui konstanta KKG_SYNC_SECRET pada wp-config.php, minimal 32 karakter acak. Nilai secret tidak ditampilkan di sini.</p>';
+    echo '<div class="kkg-admin-cards"><div class="kkg-admin-card"><h2>Status Integrasi</h2>';
+    echo '<p>Schema: <strong>' . esc_html(get_option('kkg_schema', 'belum dibuat')) .
+        '</strong> · Sync terakhir (UTC): <strong>' . esc_html(get_option('kkg_last_sync', 'belum')) .
+        '</strong> · Kesehatan: <strong>' . esc_html(get_option('kkg_health', 'OK')) . '</strong></p>';
+    echo '<p>Secret diatur melalui konstanta <code>KKG_SYNC_SECRET</code> pada <code>wp-config.php</code>, minimal 32 karakter acak. Nilai secret tidak ditampilkan di sini.</p></div>';
+    echo '<div class="kkg-admin-card"><h2>Kesiapan Go-Live (Mode Active)</h2>';
+    if (!$blockers) {
+        echo '<span class="kkg-admin-badge kkg-admin-badge-ok">Siap rilis (0 blocker)</span><p>Seluruh prasyarat rilis terpenuhi.</p>';
+    } else {
+        echo '<span class="kkg-admin-badge kkg-admin-badge-warn">' . count($blockers) . ' blocker tersisa</span><ul class="kkg-admin-blockers">';
+        foreach ($blockers as $b) { echo '<li>' . esc_html($b) . '</li>'; }
+        echo '</ul>';
+    }
+    echo '</div></div>';
     echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"><input type="hidden" name="action" value="kkg_settings">';
     wp_nonce_field('kkg_settings');
     echo '<table class="form-table">';
@@ -90,16 +122,42 @@ function kkg_admin_page() {
         foreach ($choices as $choice) { echo '<option value="' . esc_attr($choice) . '" ' . selected($s[$key], $choice, false) . '>' . esc_html($choice) . '</option>'; }
         echo '</select></td></tr>';
     }
-    $labels = array('page_id' => 'ID halaman /grosir/', 'phone' => 'WhatsApp CS (62...)', 'address' => 'Alamat terverifikasi',
-        'message' => 'Pesan WA ({reference})', 'policy_version' => 'Versi kebijakan consent', 'retention_days' => 'Retensi DB, hari (maks. 180)',
-        'logo' => 'ID media logo', 'hero' => 'ID media hero', 'about' => 'ID media profil',
-        'category_0' => 'ID media bra wanita', 'category_1' => 'ID media celana dalam pria', 'category_2' => 'ID media celana dalam wanita',
-        'category_3' => 'ID media kaos kaki', 'category_4' => 'ID media handuk');
-    foreach ($labels as $key => $label) {
-        echo '<tr><th><label for="kkg-' . esc_attr($key) . '">' . esc_html($label) . '</label></th><td><textarea rows="' . ($key === 'message' ? '4' : '1') . '" class="large-text" id="kkg-' . esc_attr($key) . '" name="' . esc_attr($key) . '">' . esc_textarea($s[$key]) . '</textarea></td></tr>';
+    $fields = array(
+        'page_id' => array('ID halaman /grosir/', 'number'),
+        'phone' => array('WhatsApp CS (62...)', 'tel'),
+        'address' => array('Alamat toko & gudang Surabaya (untuk Schema JSON-LD)', 'textarea'),
+        'message' => array('Pesan WA ({reference})', 'textarea'),
+        'policy_version' => array('Versi kebijakan consent', 'text'),
+        'retention_days' => array('Retensi DB, hari (maks. 180)', 'number'),
+        'logo' => array('Logo (opsional override aset bundel)', 'media'),
+        'hero' => array('Foto produk Hero (opsional override aset bundel; disarankan foto asli saat live)', 'media'),
+        'about' => array('Foto profil perusahaan (opsional override aset bundel; disarankan foto asli saat live)', 'media'),
+        'category_0' => array('Foto Bra Wanita (opsional override aset bundel)', 'media'),
+        'category_1' => array('Foto Celana Dalam Pria (opsional override aset bundel)', 'media'),
+        'category_2' => array('Foto Celana Dalam Wanita (opsional override aset bundel)', 'media'),
+        'category_3' => array('Foto Kaos Kaki (opsional override aset bundel)', 'media'),
+        'category_4' => array('Foto Handuk (opsional override aset bundel)', 'media'),
+    );
+    foreach ($fields as $key => $meta) {
+        list($label, $type) = $meta;
+        echo '<tr><th><label for="kkg-' . esc_attr($key) . '">' . esc_html($label) . '</label></th><td>';
+        if ($type === 'textarea') {
+            echo '<textarea rows="' . ($key === 'message' ? '4' : '2') . '" class="large-text" id="kkg-' . esc_attr($key) . '" name="' . esc_attr($key) . '">' . esc_textarea((string) $s[$key]) . '</textarea>';
+        } elseif ($type === 'media') {
+            $id = (int) $s[$key];
+            $thumb = wp_attachment_is_image($id) ? wp_get_attachment_image($id, 'thumbnail') : (kkg_bundled_asset($key) ? 'Bundel' : 'Kosong');
+            echo '<div class="kkg-media-field"><div class="kkg-media-preview">' . $thumb . '</div>';
+            echo '<input type="number" min="0" class="small-text" id="kkg-' . esc_attr($key) . '" name="' . esc_attr($key) . '" value="' . esc_attr((string) $id) . '">';
+            echo '<button type="button" class="button button-secondary" data-kkg-media-pick>Pilih Gambar</button>';
+            echo '<button type="button" class="button" data-kkg-media-clear>Hapus</button></div>';
+        } else {
+            $attrs = $key === 'retention_days' ? ' min="1" max="180"' : ($type === 'number' ? ' min="0"' : '');
+            echo '<input type="' . esc_attr($type) . '"' . $attrs . ' class="regular-text kkg-admin-input" id="kkg-' . esc_attr($key) . '" name="' . esc_attr($key) . '" value="' . esc_attr((string) $s[$key]) . '">';
+        }
+        echo '</td></tr>';
     }
     foreach (array('privacy_reviewed' => 'Audit privacy/CMP dan retensi disetujui', 'claims_reviewed' => 'Empat klaim USP terbukti dan disetujui',
-        'assets_reviewed' => 'Foto asli, logo, alamat dan nomor CS disetujui', 'release_reviewed' => 'QA, backup/restore, rollback dan rilis disetujui eksplisit',
+        'assets_reviewed' => 'Foto asli, logo, dan nomor CS disetujui', 'release_reviewed' => 'QA, backup/restore, rollback dan rilis disetujui eksplisit',
         'cleanup_enabled' => 'Jalankan cleanup retensi yang disetujui') as $key => $label) {
         echo '<tr><th>' . esc_html($key) . '</th><td><label><input type="checkbox" name="' . esc_attr($key) . '" value="1" ' . checked($s[$key], 1, false) . '> ' . esc_html($label) . '</label></td></tr>';
     }

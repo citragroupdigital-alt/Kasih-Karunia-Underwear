@@ -4,9 +4,9 @@ Status pengujian lokal dicatat berdasarkan eksekusi aktual skrip uji di lingkung
 
 ## Ringkasan Bukti Pengujian Lokal
 
-- `npm.cmd test`: menguji domain PHP (`tests/domain.php`), izin & validasi API (`tests/api.php`), lint sintaks seluruh file PHP plugin (`php -l`), dan logika Apps Script (`tests/apps-script.test.cjs`).
+- `npm.cmd test`: menguji domain PHP + modul SEO/Schema (`tests/domain.php`), izin & validasi API (`tests/api.php`), lint sintaks seluruh file PHP plugin (`php -l`), dan logika Apps Script (`tests/apps-script.test.cjs`).
 - `node scripts/database-check.cjs`: menguji instalasi idempotent InnoDB, 12 request paralel pengunjung berbeda, 8 request paralel browser sama, 6 retry idempotent, reuse 24 jam tanpa perpanjangan expiry, rollover expiry, kronologi *as-of* pembayaran, cursor sync, kapasitas 9.999 kode, `repeat` order, `kkg_erase_reference`, retensi 180 hari tanpa merusak sequence, serta rate limit (`artifacts/database-results.json`).
-- `node scripts/browser-check.cjs`: menguji render 10 section pada viewport `320`, `375`, `390`, `768`, `1440` px (tanpa horizontal overflow dan tanpa tumpang tindih badge MOQ), FAQ keyboard, penolakan consent, penerimaan consent + coalescing double-click, fallback API error 503, serta adapter CMP eksternal (`artifacts/browser-results.json` & `artifacts/screenshots/*.png`).
+- `node scripts/browser-check.cjs`: menguji render 9 section (sesuai revisi terbaru penghapusan footer; tanpa `<footer>` maupun `.kkg-review-note`) pada viewport `320`, `375`, `390`, `768`, `1440` px (tanpa horizontal overflow dan tanpa tumpang tindih badge MOQ/CTA), heading produk terpusat, posisi `"Melayani Pengiriman Seluruh Indonesia"` di bawah CTA akhir, cakupan 17 kata kunci SEO/AEO/GEO, validitas JSON-LD `@graph` (`WholesaleStore`, `FAQPage` 8 item, `OfferCatalog` 5 item) + `<title>`/`<meta description>`/`canonical`/`noindex` staging, FAQ keyboard, penolakan consent, penerimaan consent + coalescing double-click, fallback API error 503, serta adapter CMP eksternal (`artifacts/browser-results.json` & `artifacts/screenshots/*.png`).
 - `scripts/verify-workbook.ps1`: memverifikasi 6 nama/urutan tab, kesamaan styles/layout XML dengan baseline, validitas XML, hilangnya contoh kode `KK-GA2601` dan formula snapshot lama.
 
 ---
@@ -17,15 +17,15 @@ Status pengujian lokal dicatat berdasarkan eksekusi aktual skrip uji di lingkung
 
 | # | Kriteria PRD | Status | Bukti / Catatan & Keterbatasan |
 |---|---|---|---|
-| 1 | `/grosir/` menampilkan urutan 10 section sesuai Bab 4 | **LULUS (Lokal)** | `browser-check.cjs` memverifikasi 10 elemen `[data-section]` pada 5 viewport |
+| 1 | `/grosir/` menampilkan urutan section landing page (revisi: 9 section, footer dihapus) | **LULUS (Lokal)** | `browser-check.cjs` memverifikasi 9 elemen `[data-section]` tanpa `<footer>` pada 5 viewport |
 | 2 | Hanya 5 kategori disetujui; tanpa harga, SKU, cart, checkout, form kualifikasi | **LULUS (Lokal)** | Diverifikasi pada `templates/landing.php` dan screenshot `1440`/`375` px |
-| 3 | Hero memakai foto produk asli dan H1/CTA disetujui | **SEBAGIAN (Staging)** | Copy H1 & CTA sesuai PRD; foto produk asli menunggu penyerahan aset pemilik (placeholder aktif di staging) |
+| 3 | Hero memakai foto produk asli dan H1/CTA disetujui | **SEBAGIAN (Staging)** | Gambar Hero terpasang di [hero-kk.webp](../wordpress/kk-grosir/assets/hero-kk.webp) (`1200×1200` WebP dari `Hero Section KK.jpg`), H1 `Kulakan Grosir Pakaian Dalam Mulai 1 Lusin!` & CTA `Minta Katalog Grosir`; foto asli/persetujuan `assets_reviewed` diverifikasi sebelum `mode = active` |
 | 4 | Statistik persis `70.000+`, `2.000+`, `40.000+`; tidak hilang pada mobile | **LULUS (Lokal)** | Diuji `browser-check.cjs` pada semua 5 viewport (`320`–`1440` px) |
-| 5 | Copy About mengikuti gambar 1 (`image(2).png`), layout mengikuti gambar 2 (`image(3).png`) | **LULUS (Lokal)** | Copy & layout 2 kolom diverifikasi pada `templates/landing.php` dan screenshot |
+| 5 | Copy About mengikuti gambar 1 (`image(2).png`), layout mengikuti gambar 2 (`image(3).png`) | **LULUS (Lokal)** | Copy (dengan istilah `daily needs` disesuaikan menjadi `kebutuhan harian` atas revisi pengguna 11 Nov 2026) & layout 2 kolom diverifikasi pada `templates/landing.php` dan screenshot |
 | 6 | FAQ accordion berfungsi dengan keyboard dan konten tetap terbaca | **LULUS (Lokal)** | HTML `<details>` server-side + uji keyboard `Enter` & `aria-expanded` di `browser-check.cjs` |
-| 7 | Header/footer khusus `/grosir/`; halaman lain tetap Jupiter tanpa perubahan | **BELUM DIUJI (Staging)** | Implementasi `kkg_template` & `kkg_is_page` siap, perlu verifikasi langsung pada WordPress + Jupiter |
-| 8 | Semua CTA mengarah ke satu nomor WA yang dikonfigurasi | **LULUS (Lokal)** | Teruji seluruh 9 CTA pada preview memakai satu nomor CS resmi `62895339293140` (`browser-check.cjs`) dan `kkg_wa_url()` |
-| 9 | Sticky CTA, popup WA, dan consent banner tidak saling menutupi | **LULUS (Lokal)** | Tidak ada sticky CTA tumpang tindih; banner bottom-screen & `<dialog>` modal teruji di `browser-check.cjs` |
+| 7 | Header khusus `/grosir/` tanpa footer halaman (revisi pengguna); halaman lain tetap Jupiter | **BELUM DIUJI (Staging)** | Implementasi `kkg_template` & `kkg_is_page` siap tanpa footer di `/grosir/`; perlu verifikasi langsung pada WordPress + Jupiter (serta keputusan penempatan `Pengaturan Cookie` bila banner diaktifkan) |
+| 8 | Semua CTA mengarah ke satu nomor WA yang dikonfigurasi | **LULUS (Lokal)** | Teruji seluruh 4 CTA (`header`, `hero`, `sticky`, `final_cta`; CTA kategori dan footer dihapus atas instruksi pengguna) memakai satu nomor CS resmi `62895339293140` (`browser-check.cjs`) |
+| 9 | Sticky CTA, popup WA, dan consent banner tidak saling menutupi | **LULUS (Lokal)** | Teruji di `browser-check.cjs` (`375px`): sticky mobile CTA otomatis tersembunyi saat Hero CTA, banner consent, dialog cookie, atau section Final CTA (`data-kkg-end-guard`) terlihat |
 | 10 | Hero/foto/konten tidak pecah di desktop/tablet/mobile | **LULUS (Lokal)** | `scrollWidth <= innerWidth` & bebas tumpang tindih MOQ pada `320`, `375`, `390`, `768`, `1440` px (perlu uji ulang setelah foto asli dipasang) |
 
 ### 14.2 Reference Code dan Handoff

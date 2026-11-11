@@ -36,9 +36,10 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
 5. Buat/pilih halaman WordPress dengan slug persis **`grosir`**, isi dengan WPBakery satu modul Text/Shortcode berisi `[kk_grosir]`. Jangan menempelkan CSS/JS tambahan ke WPBakery Raw HTML dan jangan mengedit `functions.php` Jupiter.
 6. Pada **Settings → KK Grosir**:
    - Biarkan `mode = staging` (hanya admin login `manage_options` yang dapat melihat `/grosir/` dan memanggil endpoint handoff).
-   - Isi `ID halaman /grosir/`, periksa `WhatsApp CS (62...)` (default sudah terisi nomor resmi `62895339293140`), isi `Alamat terverifikasi`, dan ID media gambar asli (`hero`, `about`, `category_0..4`; logo default sudah dibundel melalui `assets/logo-kk.webp` dan dapat dioverride dengan ID media WordPress jika perlu).
-   - Biarkan `consent_mode = disabled` dan checkbox review tidak dicentang sampai audit privacy/CMP/aset/klaim USP selesai.
-7. Uji halaman lain di website (beranda, produk WooCommerce, header/footer Jupiter) untuk memastikan tidak ada perubahan tampilan maupun konflik CSS/JS.
+   - Isi `ID halaman /grosir/`, periksa `WhatsApp CS (62...)` (default sudah terisi nomor resmi `62895339293140`), isi `Alamat toko & gudang Surabaya (untuk Schema JSON-LD)` bila ingin mencantumkan nama jalan resmi ke properti `streetAddress` JSON-LD (`addressLocality: Surabaya` sudah otomatis aktif); seluruh aset default (`logo-kk.webp`, `hero-kk.webp`, `about-gudang-kk.webp`, dan ke-5 kategori `category-0` s.d. `category-4`) sudah dibundel dan dapat dioverride dengan ID media WordPress sebelum publikasi live.
+   - Biarkan `consent_mode = disabled` dan checkbox review tidak dicentang sampai audit privacy/CMP/aset/klaim USP selesai (catatan: karena footer halaman dihapus, pastikan penempatan kontrol pembuka kembali pilihan cookie apabila `consent_mode = standalone` atau `external` diaktifkan).
+7. Uji halaman lain di website (beranda, produk WooCommerce, header/footer Jupiter) untuk memastikan tidak ada perubahan tampilan maupun konflik CSS/JS, serta periksa *View Page Source* pada `/grosir/` agar `<title>`, `<meta description>`, `rel="canonical"`, dan `<script type="application/ld+json">` tampil tunggal tanpa duplikasi Yoast/RankMath.
+   - Opsional (AEO non-Google): jika pemilik menyetujui file root domain, unggah [`deliverables/llms.txt`](../deliverables/llms.txt) ke `/llms.txt` pada web root dan pastikan `robots.txt` tidak memblokir `Googlebot`, `Google-Extended`, `GPTBot`, `PerplexityBot`, `ClaudeBot`, maupun `Bingbot`. Panduan struktur Ad Group Google Ads Search tersedia di [`docs/SEO_AEO_GEO_ADS_PLAYBOOK.md`](SEO_AEO_GEO_ADS_PLAYBOOK.md).
 
 ---
 

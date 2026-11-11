@@ -7,15 +7,37 @@
   const banner = root.querySelector('[data-kkg-banner]');
   const dialog = root.querySelector('.kkg-dialog');
   const status = root.querySelector('[data-kkg-status]');
+  const stickyBar = root.querySelector('[data-kkg-sticky]');
+  const heroCtaWrap = root.querySelector('[data-kkg-hero-cta]');
+  const endGuards = Array.from(root.querySelectorAll('[data-kkg-end-guard]'));
   const DAY = 86400000;
   let consent = { storage: false, advertising: false, analytics: false, version: cfg.policyVersion };
   let memoryToken = null;
   let pending = false;
+  let toastTimer = null;
+  let heroPassed = false;
+  const visibleGuards = new Set();
+
   function read(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; } }
   function write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} }
   function remove(key) { try { localStorage.removeItem(key); } catch (_) {} }
   function randomHex(bytes) {
     return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), n => n.toString(16).padStart(2, '0')).join('');
+  }
+  function showStatus(message, autoClear = true) {
+    clearTimeout(toastTimer);
+    status.textContent = message;
+    status.hidden = !message;
+    if (message && autoClear) {
+      toastTimer = setTimeout(() => { status.hidden = true; status.textContent = ''; }, 4500);
+    }
+  }
+  function syncOverlays() {
+    root.classList.toggle('kkg-has-banner', !banner.hidden);
+    if (!stickyBar) return;
+    const show = heroPassed && visibleGuards.size === 0 && banner.hidden && !dialog.open;
+    stickyBar.hidden = !show;
+    root.classList.toggle('kkg-has-sticky', show);
   }
   function applyConsent(value, persist) {
     consent = {
@@ -26,6 +48,7 @@
     if (persist) write('kkg-consent', { ...consent, expires: Date.now() + 180 * DAY });
     banner.hidden = true;
     if (dialog.open) dialog.close();
+    syncOverlays();
     // Only forward consent to an audited integration. Do not create or load Google tags.
     window.dispatchEvent(new CustomEvent('kkg:consent', { detail: { ...consent } }));
     captureClick();
@@ -63,13 +86,14 @@
   function openChoices() {
     if (cfg.consentMode === 'external') {
       window.dispatchEvent(new CustomEvent('kkg:open-consent'));
-      status.textContent = 'Pengaturan privasi dibuka melalui penyedia cookie website.';
+      showStatus('Pengaturan privasi dibuka melalui penyedia cookie website.');
     } else if (cfg.consentMode === 'standalone') {
       dialog.querySelector('[name="kkg-advertising"]').checked = consent.advertising;
       dialog.querySelector('[name="kkg-analytics"]').checked = consent.analytics;
       dialog.showModal();
+      syncOverlays();
     } else {
-      status.textContent = 'Tracking opsional belum diaktifkan.';
+      showStatus('Tracking opsional belum diaktifkan.');
     }
   }
   window.KKConsent = Object.freeze({
@@ -83,6 +107,8 @@
   } else if (cfg.consentMode === 'disabled') {
     remove('kkg-click'); remove('kkg-token');
   }
+  syncOverlays();
+
   root.querySelectorAll('[data-kkg-settings],[data-kkg-choices]').forEach(el => el.addEventListener('click', openChoices));
   root.querySelector('[data-kkg-reject]').addEventListener('click', () => applyConsent({}, true));
   root.querySelector('[data-kkg-accept]').addEventListener('click', () => applyConsent({ advertising: true, analytics: true }, true));
@@ -90,7 +116,44 @@
     advertising: dialog.querySelector('[name="kkg-advertising"]').checked,
     analytics: dialog.querySelector('[name="kkg-analytics"]').checked,
   }, true));
-  root.querySelector('[data-kkg-close]').addEventListener('click', () => dialog.close());
+  root.querySelectorAll('[data-kkg-close],[data-kkg-close-secondary]').forEach(btn => btn.addEventListener('click', () => dialog.close()));
+  dialog.addEventListener('close', syncOverlays);
+  if (!('closedBy' in HTMLDialogElement.prototype)) {
+    let pressedOutside = false;
+    const outside = e => {
+      const r = dialog.getBoundingClientRect();
+      return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+    };
+    dialog.addEventListener('pointerdown', e => { pressedOutside = outside(e); });
+    dialog.addEventListener('pointerup', e => { if (pressedOutside && outside(e)) dialog.close(); });
+  }
+  if ('IntersectionObserver' in window && stickyBar && heroCtaWrap) {
+    const updateHero = () => {
+      const passed = heroCtaWrap.getBoundingClientRect().bottom <= 0;
+      if (passed !== heroPassed) {
+        heroPassed = passed;
+        syncOverlays();
+      }
+    };
+    const heroObserver = new IntersectionObserver(entries => {
+      const entry = entries[0];
+      heroPassed = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+      syncOverlays();
+    }, { threshold: 0 });
+    heroObserver.observe(heroCtaWrap);
+    window.addEventListener('scroll', updateHero, { passive: true });
+    updateHero();
+    if (endGuards.length) {
+      const endObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) visibleGuards.add(entry.target);
+          else visibleGuards.delete(entry.target);
+        });
+        syncOverlays();
+      }, { threshold: 0 });
+      endGuards.forEach(el => endObserver.observe(el));
+    }
+  }
   root.querySelectorAll('details').forEach(el => {
     const summary = el.querySelector('summary');
     summary.setAttribute('aria-expanded', String(el.open));
@@ -126,7 +189,7 @@
         memoryToken.expires = expires; write('kkg-token', memoryToken);
       }
     } catch (_) {
-      status.textContent = 'Membuka WhatsApp tanpa kode referensi.';
+      showStatus('Membuka WhatsApp tanpa kode referensi.', false);
     } finally {
       clearTimeout(timeout);
       link.removeAttribute('aria-busy');

@@ -18,16 +18,16 @@ Bangun landing page grosir pada `https://kk-underwear.id/grosir/` di WordPress e
 
 Cakupan implementasi:
 
-- Landing page dengan header/footer khusus halaman dan sepuluh bagian sesuai PRD.
-- Custom plugin WordPress untuk render halaman, pengaturan, atribusi WhatsApp, Reference Code, database, dan REST API.
+- Landing page dengan header khusus halaman dan sembilan bagian aktif sesuai revisi pengguna (footer dihapus atas instruksi pengguna 11 November 2026).
+- Custom plugin WordPress untuk render halaman, pengaturan, metadata SEO/AEO/GEO & JSON-LD Schema khusus `/grosir/`, atribusi WhatsApp, Reference Code, database, dan REST API.
 - Sinkronisasi WordPress ke Google Sheets melalui Apps Script.
 - Rekonsiliasi pembayaran dan penyiapan dataset Purchase offline.
-- Audit, pengujian, panduan admin/CS, backup, dan rollback.
+- Blueprint keselarasan Google Ads (`docs/SEO_AEO_GEO_ADS_PLAYBOOK.md`), audit, pengujian, panduan admin/CS, backup, dan rollback.
 
 Di luar cakupan:
 
-- SEO, AEO, GEO, riset keyword, metadata Yoast, schema, dan Search Console.
-- Campaign, bidding, budget, conversion action, aktivasi impor, atau perubahan akun Google Ads live.
+- Perubahan SEO global situs (Yoast/RankMath pada halaman lain di luar `/grosir/`) serta aktivasi Search Console tanpa instruksi tambahan.
+- Perubahan langsung pada akun Google Ads live (campaign, bidding, budget, conversion action, aktivasi impor).
 - Katalog e-commerce, cart, checkout, CRM baru, dan integrasi penjualan WooCommerce.
 - WhatsApp Business API, chatbot, pembacaan chat, dan pengiriman pesan proaktif.
 - Perubahan global tema, plugin vendor, atau tracking existing tanpa instruksi terpisah.
@@ -79,9 +79,10 @@ Urutan bagian wajib:
 7. Cara Pemesanan
 8. FAQ
 9. Final CTA WhatsApp
-10. Custom Footer
 
-- Gunakan copy yang dikunci di Bab 4 PRD, termasuk H1 `Kulakan Grosir Mulai 1 Lusin!` dan CTA `Minta Katalog Grosir`.
+*(Catatan revisi pengguna 11 November 2026: section 10 Custom Footer dihapus.)*
+
+- Gunakan copy inti Bab 4 PRD yang diperbarui atas persetujuan pengguna 11 November 2026: H1 diperkaya menjadi `Kulakan Grosir Pakaian Dalam Mulai 1 Lusin!`, CTA utama `Minta Katalog Grosir`, CTA kartu kategori dihapus, catatan disclaimer USP & footer dihapus, serta konteks lokasi terverifikasi Surabaya (`toko dan gudang di Surabaya`) dan mitra `agen pakaian dalam` ditambahkan untuk SEO/AEO/GEO/Google Ads.
 - About mengikuti copy `image(2).png` dan layout `image(3).png` sesuai pemetaan aset PRD. Jika penyebutan nomor gambar di bagian lain ambigu, cocokkan nama file sebelum implementasi.
 - Palet acuan: Royal Blue `#0454D9`, Hot Pink `#F00688`, Purple `#873FE8`, Sky Blue `#49BDF5`, Lavender `#F8F1FB`, Navy `#151B33`, dan putih. Nilai ini estimasi poster, bukan panduan merek resmi.
 - Gunakan desain bersih, responsif, jarak lega, dan animasi ringan. Hindari ornamen berlebihan, autoplay, serta layout shift.

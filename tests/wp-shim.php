@@ -21,4 +21,4 @@ function current_user_can($cap) { return true; }
 function is_page($id) { return true; }
 function get_post_field($key, $id) { return $key === 'post_name' ? 'grosir' : '[kk_grosir]'; }
 function has_shortcode($content, $tag) { return strpos($content, '['.$tag.']') !== false; }
-foreach (array('domain', 'settings', 'presentation') as $file) require_once KKG_DIR . 'includes/' . $file . '.php';
+foreach (array('domain', 'settings', 'presentation', 'seo') as $file) require_once KKG_DIR . 'includes/' . $file . '.php';
