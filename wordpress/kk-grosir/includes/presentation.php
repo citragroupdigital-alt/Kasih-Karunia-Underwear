@@ -55,6 +55,8 @@ function kkg_brand() {
     $s = kkg_settings();
     if (wp_attachment_is_image($s['logo'])) {
         echo wp_get_attachment_image($s['logo'], 'medium', false, array('class' => 'kkg-logo', 'alt' => 'CV. Kasih Karunia / KK Underwear'));
+    } elseif (defined('KKG_URL') && file_exists(KKG_DIR . 'assets/logo-kk.webp')) {
+        echo '<img class="kkg-logo" src="' . esc_url(KKG_URL . 'assets/logo-kk.webp') . '" alt="CV. Kasih Karunia / KK Underwear" width="640" height="480" decoding="async">';
     } else {
         echo '<span class="kkg-wordmark">KK<span>UNDERWEAR<small>CV. Kasih Karunia</small></span></span>';
     }

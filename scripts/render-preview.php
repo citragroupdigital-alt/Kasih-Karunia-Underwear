@@ -2,5 +2,5 @@
 require dirname(__DIR__) . '/tests/wp-shim.php';
 ?><!doctype html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>KK Underwear — Preview staging</title><link rel="stylesheet" href="/assets/landing.css"></head><body class="kkg-page">
 <?php echo kkg_render(); ?>
-<script>window.KKG={endpoint:'/api/handoff',fallback:'',consentMode:'disabled',policyVersion:'draft-1',nonce:''};</script>
+<script>window.KKG=<?php echo json_encode(array('endpoint'=>'/api/handoff','fallback'=>kkg_wa_url(),'consentMode'=>'disabled','policyVersion'=>'draft-1','nonce'=>'')); ?>;</script>
 <script src="/assets/landing.js"></script></body></html>

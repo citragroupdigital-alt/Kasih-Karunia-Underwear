@@ -31,6 +31,7 @@ demand(kkg_api_permission(new Request(array('authorization'=>'Bearer '.KKG_SYNC_
 demand(kkg_api_permission(new Request(array('origin'=>'https://evil.test','content-type'=>'application/json')))->data['status']===403,'foreign origin');
 demand(kkg_api_permission(new Request(array('origin'=>'https://example.test','content-type'=>'application/json')))===true,'same origin');
 kkg_register_api();
+$GLOBALS['kkg_test_options']['kkg_settings']=array('mode'=>'staging','phone'=>'');
 $cb=$GLOBALS['routes']['/handoff']['callback'];
 demand($cb(new Request())->data['status']===503,'missing phone blocks handoff');
 $GLOBALS['kkg_test_options']['kkg_settings']=array('mode'=>'staging','phone'=>'6281234567890');

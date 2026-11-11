@@ -11,8 +11,9 @@ const server = http.createServer((req, res) => {
       const html = execFileSync(php, [path.join(__dirname, 'render-preview.php')], { encoding: 'utf8' });
       res.writeHead(200, {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}); res.end(html);
     } catch (_) { res.writeHead(500); res.end('PHP preview failed'); }
-  } else if (['/assets/landing.css', '/assets/landing.js'].includes(req.url)) {
-    res.writeHead(200, {'Content-Type':req.url.endsWith('.css') ? 'text/css' : 'text/javascript'});
+  } else if (['/assets/landing.css', '/assets/landing.js', '/assets/logo-kk.webp'].includes(req.url)) {
+    const type = req.url.endsWith('.css') ? 'text/css' : req.url.endsWith('.webp') ? 'image/webp' : 'text/javascript';
+    res.writeHead(200, {'Content-Type': type});
     res.end(fs.readFileSync(path.join(root,'wordpress/kk-grosir',req.url)));
   } else { res.writeHead(404); res.end('Not found'); }
 });

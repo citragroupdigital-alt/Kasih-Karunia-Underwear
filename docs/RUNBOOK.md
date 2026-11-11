@@ -36,7 +36,7 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
 5. Buat/pilih halaman WordPress dengan slug persis **`grosir`**, isi dengan WPBakery satu modul Text/Shortcode berisi `[kk_grosir]`. Jangan menempelkan CSS/JS tambahan ke WPBakery Raw HTML dan jangan mengedit `functions.php` Jupiter.
 6. Pada **Settings → KK Grosir**:
    - Biarkan `mode = staging` (hanya admin login `manage_options` yang dapat melihat `/grosir/` dan memanggil endpoint handoff).
-   - Isi `ID halaman /grosir/`, `WhatsApp CS (62...)` (format angka `62...`, gunakan nomor uji resmi saat staging), `Alamat terverifikasi`, dan ID media gambar asli (`logo`, `hero`, `about`, `category_0..4`).
+   - Isi `ID halaman /grosir/`, periksa `WhatsApp CS (62...)` (default sudah terisi nomor resmi `62895339293140`), isi `Alamat terverifikasi`, dan ID media gambar asli (`hero`, `about`, `category_0..4`; logo default sudah dibundel melalui `assets/logo-kk.webp` dan dapat dioverride dengan ID media WordPress jika perlu).
    - Biarkan `consent_mode = disabled` dan checkbox review tidak dicentang sampai audit privacy/CMP/aset/klaim USP selesai.
 7. Uji halaman lain di website (beranda, produk WooCommerce, header/footer Jupiter) untuk memastikan tidak ada perubahan tampilan maupun konflik CSS/JS.
 

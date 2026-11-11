@@ -38,10 +38,10 @@ Seluruh item di bawah merupakan gate keras di `kkg_release_blockers()` ([setting
 
 | # | Item Blocker | Status Saat Ini | Penanggung Jawab |
 |---|---|---|---|
-| 1 | Nomor WhatsApp CS resmi format `62...` | **Belum tersedia** | Pemilik bisnis |
+| 1 | Nomor WhatsApp CS resmi format `62...` | **Tersedia (`62895339293140`)** — ditetapkan sebagai default `phone` pada `kkg_settings()` | Pemilik bisnis (sudah diberikan) |
 | 2 | Foto produk asli Hero + 5 kategori produk | **Belum tersedia** (memakai placeholder di staging) | Pemilik bisnis / Tim kreatif |
 | 3 | Foto asli profil CV. Kasih Karunia | **Belum dipilih** (memakai placeholder di staging) | Pemilik bisnis / Tim kreatif |
-| 4 | Logo master resolusi memadai | **Belum tersedia** (memakai wordmark teks di staging) | Pemilik bisnis / Tim kreatif |
+| 4 | Logo master resolusi memadai | **Tersedia (`640×480` WebP transparan)** — dibundel di [logo-kk.webp](../wordpress/kk-grosir/assets/logo-kk.webp) | Pemilik bisnis (sudah diberikan) |
 | 5 | Alamat usaha/kontak terverifikasi untuk footer | **Belum diverifikasi** | Pemilik bisnis |
 | 6 | Validasi bukti atau persetujuan copy revisi 4 klaim USP (katun organik, langsung pabrik, kargo termurah, CS setiap hari) | **Menunggu validasi** (`claims_reviewed = 0`) | Pemilik bisnis |
 | 7 | Audit read-only wp-admin (versi WP/PHP/DB, Jupiter, WPBakery, WooCommerce, Site Kit, PixelYourSite, CMP, Privacy Policy) | **Belum diaudit** (`privacy_reviewed = 0`) | Developer + Admin WP |

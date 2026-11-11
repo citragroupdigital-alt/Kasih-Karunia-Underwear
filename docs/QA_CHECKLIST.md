@@ -24,7 +24,7 @@ Status pengujian lokal dicatat berdasarkan eksekusi aktual skrip uji di lingkung
 | 5 | Copy About mengikuti gambar 1 (`image(2).png`), layout mengikuti gambar 2 (`image(3).png`) | **LULUS (Lokal)** | Copy & layout 2 kolom diverifikasi pada `templates/landing.php` dan screenshot |
 | 6 | FAQ accordion berfungsi dengan keyboard dan konten tetap terbaca | **LULUS (Lokal)** | HTML `<details>` server-side + uji keyboard `Enter` & `aria-expanded` di `browser-check.cjs` |
 | 7 | Header/footer khusus `/grosir/`; halaman lain tetap Jupiter tanpa perubahan | **BELUM DIUJI (Staging)** | Implementasi `kkg_template` & `kkg_is_page` siap, perlu verifikasi langsung pada WordPress + Jupiter |
-| 8 | Semua CTA mengarah ke satu nomor WA yang dikonfigurasi | **SEBAGIAN (Staging)** | Kode memakai satu `phone` (`kkg_wa_url`); nomor WA CS resmi belum diberikan |
+| 8 | Semua CTA mengarah ke satu nomor WA yang dikonfigurasi | **LULUS (Lokal)** | Teruji seluruh 9 CTA pada preview memakai satu nomor CS resmi `62895339293140` (`browser-check.cjs`) dan `kkg_wa_url()` |
 | 9 | Sticky CTA, popup WA, dan consent banner tidak saling menutupi | **LULUS (Lokal)** | Tidak ada sticky CTA tumpang tindih; banner bottom-screen & `<dialog>` modal teruji di `browser-check.cjs` |
 | 10 | Hero/foto/konten tidak pecah di desktop/tablet/mobile | **LULUS (Lokal)** | `scrollWidth <= innerWidth` & bebas tumpang tindih MOQ pada `320`, `375`, `390`, `768`, `1440` px (perlu uji ulang setelah foto asli dipasang) |
 

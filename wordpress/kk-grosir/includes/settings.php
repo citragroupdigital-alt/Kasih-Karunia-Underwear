@@ -3,7 +3,7 @@ defined('ABSPATH') || exit;
 
 function kkg_settings() {
     return array_merge(array(
-        'mode' => 'off', 'page_id' => 0, 'phone' => '', 'address' => '',
+        'mode' => 'off', 'page_id' => 0, 'phone' => '62895339293140', 'address' => '',
         'message' => "Halo CS CV. Kasih Karunia, saya ingin meminta katalog dan informasi harga grosir pakaian dalam, kaos kaki, serta handuk.\n{reference}\nTerima kasih.",
         'consent_mode' => 'disabled', 'policy_version' => 'draft-1',
         'privacy_reviewed' => 0, 'claims_reviewed' => 0, 'assets_reviewed' => 0, 'release_reviewed' => 0,
@@ -25,6 +25,7 @@ function kkg_release_blockers($s) {
     if (!$s['address']) { $errors[] = 'Alamat terverifikasi'; }
     if ($s['consent_mode'] === 'disabled') { $errors[] = 'Adapter CMP atau consent hasil audit'; }
     foreach (array('logo', 'hero', 'about', 'category_0', 'category_1', 'category_2', 'category_3', 'category_4') as $key) {
+        if ($key === 'logo' && file_exists(KKG_DIR . 'assets/logo-kk.webp')) { continue; }
         if (!wp_attachment_is_image($s[$key])) { $errors[] = 'Aset ' . $key; }
     }
     return $errors;

@@ -21,6 +21,12 @@ const path = require('node:path');
       assert.equal(await page.locator('.kkg-product').count(),5);
       assert.equal(await page.locator('.kkg-stats strong').allTextContents().then(x=>x.join('|')),'70.000+|2.000+|40.000+');
       assert.equal((await page.locator('#kkg-faq-title').innerText()).replace(/\s+/g,' ').trim(),'Sebelum mulai kulakan.');
+      const logos=await page.evaluate(()=>Array.from(document.querySelectorAll('.kkg-logo')).map(el=>({ok:el.complete&&el.naturalWidth===640&&el.naturalHeight===480})));
+      assert.equal(logos.length,2,'header and footer logos');
+      assert.equal(logos.every(l=>l.ok),true,'logos loaded');
+      const ctas=await page.evaluate(()=>Array.from(document.querySelectorAll('[data-kkg-cta]')).map(el=>el.getAttribute('href')));
+      assert.equal(ctas.length,9,'all 9 CTAs rendered as links');
+      assert.equal(ctas.every(h=>h&&h.startsWith('https://wa.me/62895339293140?text=')),true,'single official WA CS number');
       const overlap=await page.evaluate(()=>{
         const moq=document.querySelector('.kkg-moq').getBoundingClientRect();
         const label=document.querySelector('.kkg-hero-image .kkg-placeholder span:not(.kkg-placeholder-mark)').getBoundingClientRect();
@@ -38,8 +44,8 @@ const path = require('node:path');
     async function fixture({consentMode='standalone',fail=false,delay=0}={}) {
       const context=await browser.newContext();
       const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
-      const body=html.replace("fallback:''","fallback:'https://wa.me/test-only'")
-        .replace("consentMode:'disabled'","consentMode:'"+consentMode+"'")
+      const body=html.replace(/(["']?fallback["']?):(?:'[^']*'|"[^"]*")/,'$1:"https://wa.me/test-only"')
+        .replace(/(["']?consentMode["']?):(?:'[^']*'|"[^"]*")/,'$1:"'+consentMode+'"')
         .replace('<main id="kkg-main">','<main id="kkg-main"><a id="test-cta" data-kkg-cta="hero" href="https://wa.me/test-only">Test-only CTA</a>');
       const requests=[];
       await p.route('http://127.0.0.1:4173/?**',r=>r.fulfill({contentType:'text/html',body}));

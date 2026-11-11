@@ -7,7 +7,7 @@ Target: plugin WordPress lokal untuk staging, bukan deployment live. PRD dan AGE
 - Baseline GS: append-only, cursor Lead ID, contoh kode lama, belum memiliki rekonsiliasi historis.
 - Workbook: enam tab sesuai PRD; Upload menggunakan snapshot Klik WA dan batas 500/5.000; contoh Panduan perlu diperbaiki.
 - GET publik https://kk-underwear.id/ berhasil pada 11 November 2026. HTML menyebut jupiter, js_composer_theme, jupiter-donut, smart-slider-3, woocommerce, pixelyoursite, google-site-kit. Ini bukan bukti versi, konfigurasi atau consent berfungsi.
-- Belum tersedia: akses admin/staging, runtime WordPress/database, hasil audit CMP, aset foto/logo, nomor CS, alamat, bukti USP, Google Sheets native, dan kebijakan retensi final.
+- Belum tersedia: akses admin/staging, runtime WordPress/database, hasil audit CMP, foto produk/profil asli, alamat, bukti USP, Google Sheets native, dan kebijakan retensi final. (Logo resmi `assets/logo-kk.webp` dan nomor WhatsApp CS `62895339293140` telah diberikan dan terpasang sebagai default.)
 - Tidak mengakses isi chat atau mengubah website/akun eksternal. Tidak memasang tag atau banner global.
 
 ## Perubahan file
