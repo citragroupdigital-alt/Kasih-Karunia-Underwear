@@ -17,7 +17,6 @@ class Request {
 function is_ssl(){return true;}
 function wp_get_environment_type(){return 'staging';}
 function wp_parse_url($url){return parse_url($url);}
-function home_url(){return 'https://example.test';}
 function kkg_rate_limit($scope,$limit){return true;}
 function register_rest_route($ns,$route,$args){$GLOBALS['routes'][$route]=$args;}
 require KKG_DIR . 'includes/api.php';

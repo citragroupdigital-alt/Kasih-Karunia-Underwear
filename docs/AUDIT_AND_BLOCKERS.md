@@ -27,7 +27,7 @@ Perbandingan terhadap baseline `KK_Underwear_Offline_Conversion_Purchase.xlsx` d
 |---|---|---|---|
 | Konflik CSS/JS tema Jupiter / WPBakery / WooCommerce | Layout atau kontras tombol rusak di `/grosir/` atau halaman toko lain berubah | Isolasi namespace `.kkg-*`, enqueue aset bersyarat hanya jika `kkg_is_page()`, template khusus halaman `templates/page.php` | Uji visual `/grosir/`, beranda, dan halaman produk WooCommerce di staging |
 | Page cache server / plugin caching | Respons `/handoff` ter-cache atau halaman staging terlihat publik | Header `Cache-Control: private, no-store, max-age=0` pada `/kk-offline/v1/*`; `nocache_headers()` + gate `manage_options` pada staging; tidak memakai nonce publik pada pengunjung anonim | Uji di staging dengan plugin cache aktif |
-| Benturan consent banner ganda atau duplikasi tag Google/Pixel | Pelanggaran privasi atau tracking berjalan sebelum izin | Default `consent_mode = disabled`; tidak memuat tag Google/Pixel sendiri; mendukung mode `external` (`KKConsent.set` + event `kkg:open-consent`) maupun `standalone` | Audit wp-admin Site Kit, PixelYourSite, CMP existing, dan Privacy Policy |
+| Benturan consent banner ganda atau duplikasi tag Google/Pixel | Pelanggaran privasi atau tracking berjalan sebelum izin | Default `consent_mode = disabled`; tidak memuat tag Google/Pixel sendiri; mendukung mode `external` (`KKConsent.set` + event `kkg:open-consent` tanpa mengklaim CMP terbuka) maupun `standalone` dengan kontrol buka-ulang `Pengaturan Privasi` bersyarat di `Final CTA` (`T01`) | Audit wp-admin Site Kit, PixelYourSite, CMP existing, dan Privacy Policy di staging (`T08`) |
 | Konkurensi & perubahan zona waktu pada server/DB | Kode ganda atau sequence melompat saat rollover tahun WIB | Named MySQL `GET_LOCK` + transaksi InnoDB + `FOR UPDATE` + `UNIQUE KEY reference_code` + konversi `Asia/Jakarta` eksplisit di PHP | Uji beban langsung pada MySQL/MariaDB staging |
 
 ---
@@ -50,4 +50,5 @@ Seluruh item di bawah merupakan gate keras di `kkg_release_blockers()` ([setting
 | 10 | Pembuatan `KKG_SYNC_SECRET` di `wp-config.php` lingkungan target & verifikasi HTTPS | **Belum dibuat di server** | Developer / Admin server |
 | 11 | QA lintas perangkat/plugin di staging + konfirmasi backup/restore & rollback | **Belum dijalankan di staging** | Developer + QA + Pemilik bisnis |
 | 12 | Pemetaan & verifikasi aturan impor Google Ads (`KK_IMPORT_RULES_VERIFIED`) | **Di luar scope PRD ini** (dokumen terpisah) | Tim Google Ads |
+| 13 | Data testimoni mitra terverifikasi & izin publikasinya | **Placeholder Staging** (`is_placeholder => true` di [testimonials.php](../wordpress/kk-grosir/includes/testimonials.php); otomatis tersembunyi di mode `active` hingga diganti data asli) | Pemilik bisnis / Tim marketing |
 

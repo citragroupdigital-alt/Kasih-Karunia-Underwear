@@ -75,37 +75,33 @@ function kkg_seo_robots($s = null) {
     return 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1';
 }
 
-function kkg_seo_home_url() {
-    return function_exists('home_url') ? home_url('/') : 'https://kk-underwear.id/';
-}
-
 function kkg_seo_canonical($s = null) {
     $s = is_array($s) ? $s : kkg_settings();
-    if (!empty($s['page_id']) && function_exists('get_permalink')) {
+    if (!empty($s['page_id'])) {
         $url = get_permalink((int) $s['page_id']);
         if ($url) { return $url; }
     }
-    return function_exists('home_url') ? home_url('/grosir/') : 'https://kk-underwear.id/grosir/';
+    return home_url('/grosir/');
 }
 
 function kkg_seo_asset_image($id, $fallback_rel = '') {
-    if ($id && function_exists('wp_attachment_is_image') && wp_attachment_is_image($id) && function_exists('wp_get_attachment_image_url')) {
+    if ($id && wp_attachment_is_image($id)) {
         $url = wp_get_attachment_image_url((int) $id, 'full');
         if ($url) { return $url; }
     }
-    if ($fallback_rel && defined('KKG_DIR') && defined('KKG_URL') && file_exists(KKG_DIR . $fallback_rel)) {
+    if ($fallback_rel && file_exists(KKG_DIR . $fallback_rel)) {
         $url = KKG_URL . $fallback_rel;
         if (strpos($url, 'http://') === 0 || strpos($url, 'https://') === 0) {
             return $url;
         }
-        return rtrim(kkg_seo_home_url(), '/') . '/' . ltrim($url, '/');
+        return rtrim(home_url('/'), '/') . '/' . ltrim($url, '/');
     }
     return '';
 }
 
 function kkg_seo_json_ld($s = null) {
     $s = is_array($s) ? $s : kkg_settings();
-    $home = kkg_seo_home_url();
+    $home = home_url('/');
     $canonical = kkg_seo_canonical($s);
     $logo = kkg_seo_asset_image((int) ($s['logo'] ?? 0), 'assets/logo-kk.webp');
     $address = array(
@@ -229,18 +225,18 @@ function kkg_seo_render_head($s = null) {
 }
 
 function kkg_seo_filter_title($title) {
-    return function_exists('kkg_is_page') && kkg_is_page() ? kkg_seo_title_text() : $title;
+    return kkg_is_page() ? kkg_seo_title_text() : $title;
 }
 
 function kkg_seo_wp_head() {
-    if (function_exists('kkg_is_page') && kkg_is_page()) {
+    if (kkg_is_page()) {
         kkg_seo_render_head();
     }
 }
 
 /** Prevent duplicate head/schema output from global SEO plugins solely on /grosir/. */
 function kkg_seo_page_isolation() {
-    if (!function_exists('kkg_is_page') || !kkg_is_page()) { return; }
+    if (!kkg_is_page()) { return; }
     remove_action('wp_head', 'rel_canonical');
     foreach (array('wpseo_title', 'wpseo_metadesc', 'wpseo_canonical', 'wpseo_robots',
         'wpseo_opengraph_title', 'wpseo_opengraph_desc', 'wpseo_opengraph_url',

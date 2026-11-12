@@ -19,6 +19,11 @@ function kkg_template($template) {
     if ($s['mode'] === 'staging') { nocache_headers(); }
     return KKG_DIR . 'templates/page.php';
 }
+function kkg_consent_mode($s = null) {
+    $s = is_array($s) ? $s : kkg_settings();
+    $mode = $s['consent_mode'] ?? 'disabled';
+    return !empty($s['privacy_reviewed']) && in_array($mode, array('standalone', 'external'), true) ? $mode : 'disabled';
+}
 function kkg_assets() {
     if (!kkg_is_page()) { return; }
     $s = kkg_settings();
@@ -28,7 +33,7 @@ function kkg_assets() {
     wp_enqueue_script('kk-grosir', KKG_URL . 'assets/landing.js', array(), KKG_VERSION, true);
     wp_add_inline_script('kk-grosir', 'window.KKG=' . wp_json_encode(array(
         'endpoint' => rest_url('kk-offline/v1/handoff'),
-        'fallback' => kkg_wa_url(), 'consentMode' => $s['privacy_reviewed'] ? $s['consent_mode'] : 'disabled',
+        'fallback' => kkg_wa_url(), 'consentMode' => kkg_consent_mode($s),
         'policyVersion' => $s['policy_version'], 'nonce' => current_user_can('manage_options') ? wp_create_nonce('wp_rest') : '',
     ), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';', 'before');
 }
@@ -55,6 +60,8 @@ function kkg_icon($name, $size = 20) {
         'headset' => '<path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/>',
         'arrow-up-right' => '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
         'chevron-down' => '<path d="m6 9 6 6 6-6"/>',
+        'chevron-left' => '<path d="m15 18-6-6 6-6"/>',
+        'chevron-right' => '<path d="m9 18 6-6-6-6"/>',
         'x' => '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
         'cookie' => '<path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/><path d="M8.5 8.5v.01"/><path d="M16 15.5v.01"/><path d="M12 12v.01"/><path d="M11 17v.01"/><path d="M7 14v.01"/>',
         'map-pin' => '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
@@ -62,6 +69,8 @@ function kkg_icon($name, $size = 20) {
         'shopping-bag' => '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
         'circle-check' => '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
         'phone' => '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+        'quote' => '<path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/><path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/>',
+        'user' => '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
     );
     if (!isset($paths[$name])) { return ''; }
     $s = (int) $size;

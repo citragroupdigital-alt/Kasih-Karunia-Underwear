@@ -86,7 +86,7 @@
   function openChoices() {
     if (cfg.consentMode === 'external') {
       window.dispatchEvent(new CustomEvent('kkg:open-consent'));
-      showStatus('Pengaturan privasi dibuka melalui penyedia cookie website.');
+      showStatus('Permintaan membuka pengaturan privasi dikirim ke pengelola cookie situs.');
     } else if (cfg.consentMode === 'standalone') {
       dialog.querySelector('[name="kkg-advertising"]').checked = consent.advertising;
       dialog.querySelector('[name="kkg-analytics"]').checked = consent.analytics;
@@ -100,6 +100,10 @@
     set(value) { if (cfg.consentMode === 'external') applyConsent(value || {}, false); },
     get() { return { ...consent }; },
   });
+  const hasConsentUi = cfg.consentMode === 'standalone' || cfg.consentMode === 'external';
+  const privacyRow = root.querySelector('[data-kkg-privacy-row]');
+  root.querySelectorAll('[data-kkg-settings]').forEach(el => { el.hidden = !hasConsentUi; });
+  if (privacyRow) privacyRow.hidden = !hasConsentUi && !privacyRow.querySelector('a');
   if (cfg.consentMode === 'standalone') {
     const saved = read('kkg-consent');
     if (saved && saved.version === cfg.policyVersion && saved.expires > Date.now()) applyConsent(saved, false);
@@ -128,21 +132,17 @@
     dialog.addEventListener('pointerup', e => { if (pressedOutside && outside(e)) dialog.close(); });
   }
   if ('IntersectionObserver' in window && stickyBar && heroCtaWrap) {
-    const updateHero = () => {
-      const passed = heroCtaWrap.getBoundingClientRect().bottom <= 0;
+    heroPassed = heroCtaWrap.getBoundingClientRect().bottom <= 0;
+    syncOverlays();
+    const heroObserver = new IntersectionObserver(entries => {
+      const entry = entries[entries.length - 1];
+      const passed = !entry.isIntersecting && entry.boundingClientRect.top < 0;
       if (passed !== heroPassed) {
         heroPassed = passed;
         syncOverlays();
       }
-    };
-    const heroObserver = new IntersectionObserver(entries => {
-      const entry = entries[0];
-      heroPassed = !entry.isIntersecting && entry.boundingClientRect.top < 0;
-      syncOverlays();
     }, { threshold: 0 });
     heroObserver.observe(heroCtaWrap);
-    window.addEventListener('scroll', updateHero, { passive: true });
-    updateHero();
     if (endGuards.length) {
       const endObserver = new IntersectionObserver(entries => {
         entries.forEach(entry => {
@@ -198,4 +198,242 @@
     // Same-tab navigation works after async requests and is not subject to popup blocking.
     window.location.assign(url);
   }));
+
+  const mobileMq = window.matchMedia('(max-width: 768px)');
+  const reduceMq = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const supportsCssSibling = typeof CSS !== 'undefined' && typeof CSS.supports === 'function' &&
+    CSS.supports('order', 'sibling-index()') && CSS.supports('order', 'sibling-count()');
+  const supportsScrollEnd = 'onscrollend' in window;
+
+  function initCarousel(carousel) {
+    const track = carousel.querySelector('[data-kkg-carousel-track]');
+    const controls = carousel.querySelector('[data-kkg-carousel-controls]');
+    const prevBtn = carousel.querySelector('[data-kkg-carousel-prev]');
+    const nextBtn = carousel.querySelector('[data-kkg-carousel-next]');
+    const markersNav = carousel.querySelector('[data-kkg-carousel-markers]');
+    const statusEl = carousel.querySelector('[data-kkg-carousel-status]');
+    const slides = track ? Array.from(track.querySelectorAll('[data-kkg-carousel-slide]')) : [];
+    const total = slides.length;
+    const supportsLoop = total >= 3 && supportsCssSibling;
+    const earlyPark = total >= 4 ? 1 : 0;
+    let active = false;
+    let activeMarker = -1;
+    let settledIndex = -1;
+    let pendingTarget = null;
+    let pendingDest = 0;
+    let rafId = 0;
+    let settleTimer = null;
+    let unlockA = 0;
+    let unlockB = 0;
+    let markers = [];
+
+    function clampOffset(slide) {
+      const max = Math.max(0, track.scrollWidth - track.clientWidth);
+      const raw = slide.offsetLeft - (track.clientWidth - slide.offsetWidth) / 2;
+      return Math.min(max, Math.max(0, raw));
+    }
+
+    function nearestSlide() {
+      const center = track.scrollLeft + track.clientWidth / 2;
+      let best = 0;
+      let minDist = Infinity;
+      for (let i = 0; i < total; i += 1) {
+        const sCenter = slides[i].offsetLeft + slides[i].offsetWidth / 2;
+        const d = Math.abs(sCenter - center);
+        if (d < minDist) { minDist = d; best = i; }
+      }
+      return best;
+    }
+
+    function updateMarker(idx) {
+      if (idx === activeMarker) return;
+      activeMarker = idx;
+      for (let i = 0; i < markers.length; i += 1) {
+        if (i === idx) markers[i].setAttribute('aria-current', 'true');
+        else markers[i].removeAttribute('aria-current');
+      }
+    }
+
+    function applySettled(idx, announce) {
+      if (!active || !slides[idx]) return;
+      if (supportsLoop) {
+        const parkLastLeft = idx <= earlyPark;
+        const parkFirstRight = idx >= total - 1 - earlyPark;
+        slides[0].inert = parkFirstRight;
+        slides[total - 1].inert = parkLastLeft;
+        const prevVar = track.style.getPropertyValue('--current');
+        const nextVar = String(idx);
+        if (prevVar !== nextVar) {
+          cancelAnimationFrame(unlockA);
+          cancelAnimationFrame(unlockB);
+          const anchor = slides[idx];
+          const beforeLeft = anchor.offsetLeft;
+          track.style.scrollSnapType = 'none';
+          track.style.overflowX = 'hidden';
+          track.style.setProperty('--current', nextVar);
+          const afterLeft = anchor.offsetLeft;
+          const delta = afterLeft - beforeLeft;
+          if (delta !== 0) track.scrollTo({ left: track.scrollLeft + delta, behavior: 'instant' });
+          unlockA = requestAnimationFrame(() => {
+            unlockB = requestAnimationFrame(() => {
+              if (!active) return;
+              track.style.overflowX = '';
+              track.style.scrollSnapType = '';
+            });
+          });
+        }
+        prevBtn.disabled = false;
+        nextBtn.disabled = false;
+      } else {
+        prevBtn.disabled = idx <= 0;
+        nextBtn.disabled = idx >= total - 1;
+      }
+      updateMarker(idx);
+      if (announce && idx !== settledIndex && statusEl) {
+        statusEl.textContent = 'Slide ' + (idx + 1) + ' dari ' + total;
+      }
+      settledIndex = idx;
+    }
+
+    function onSettle() {
+      if (!active) return;
+      if (pendingTarget !== null && Math.abs(track.scrollLeft - pendingDest) > 12) return;
+      pendingTarget = null;
+      applySettled(nearestSlide(), true);
+    }
+
+    function goToSlide(idx) {
+      if (!active || !total) return;
+      if (!supportsLoop && (idx < 0 || idx >= total)) return;
+      cancelAnimationFrame(unlockA);
+      cancelAnimationFrame(unlockB);
+      track.style.overflowX = '';
+      track.style.scrollSnapType = '';
+      const targetIdx = ((idx % total) + total) % total;
+      if (!slides[targetIdx]) return;
+      const dest = clampOffset(slides[targetIdx]);
+      pendingTarget = targetIdx;
+      pendingDest = dest;
+      updateMarker(targetIdx);
+      if (Math.abs(dest - track.scrollLeft) <= 1) {
+        pendingTarget = null;
+        applySettled(targetIdx, false);
+        return;
+      }
+      track.scrollTo({ left: dest, behavior: reduceMq.matches ? 'auto' : 'smooth' });
+    }
+
+    function onScroll() {
+      if (!active) return;
+      if (pendingTarget === null && !rafId) {
+        rafId = requestAnimationFrame(() => {
+          rafId = 0;
+          if (active && pendingTarget === null) updateMarker(nearestSlide());
+        });
+      }
+      if (!supportsScrollEnd) {
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(onSettle, 120);
+      }
+    }
+
+    function cancelPending() { pendingTarget = null; }
+
+    function buildMarkers() {
+      if (markers.length || !markersNav) return;
+      slides.forEach((slide, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'kkg-carousel-dot';
+        btn.setAttribute('aria-label', slide.dataset.markerName || ('Pilih slide ' + (idx + 1)));
+        btn.addEventListener('click', () => goToSlide(idx));
+        markersNav.appendChild(btn);
+        markers.push(btn);
+      });
+    }
+
+    function enableCarousel() {
+      if (active || !track || total < 2) return;
+      active = true;
+      buildMarkers();
+      carousel.setAttribute('role', 'region');
+      carousel.setAttribute('aria-roledescription', 'carousel');
+      carousel.setAttribute('aria-label', carousel.dataset.carouselLabel || 'Galeri');
+      track.setAttribute('tabindex', '0');
+      track.setAttribute('role', 'group');
+      track.setAttribute('aria-label', carousel.dataset.trackLabel || 'Daftar slide');
+      slides.forEach(slide => {
+        slide.setAttribute('role', 'group');
+        slide.setAttribute('aria-roledescription', 'slide');
+        if (slide.dataset.slideLabel) slide.setAttribute('aria-label', slide.dataset.slideLabel);
+      });
+      if (controls) controls.hidden = false;
+      if (markersNav) markersNav.hidden = false;
+      activeMarker = -1;
+      settledIndex = -1;
+      pendingTarget = null;
+      applySettled(0, false);
+      track.scrollTo({ left: clampOffset(slides[0]), behavior: 'instant' });
+      updateMarker(0);
+      if (statusEl) statusEl.textContent = '';
+    }
+
+    function disableCarousel() {
+      if (!active) return;
+      active = false;
+      pendingTarget = null;
+      cancelAnimationFrame(rafId);
+      cancelAnimationFrame(unlockA);
+      cancelAnimationFrame(unlockB);
+      clearTimeout(settleTimer);
+      rafId = 0;
+      carousel.removeAttribute('role');
+      carousel.removeAttribute('aria-roledescription');
+      carousel.removeAttribute('aria-label');
+      track.removeAttribute('tabindex');
+      track.removeAttribute('role');
+      track.removeAttribute('aria-label');
+      track.style.removeProperty('--current');
+      track.style.overflowX = '';
+      track.style.scrollSnapType = '';
+      slides.forEach(slide => {
+        slide.inert = false;
+        slide.removeAttribute('role');
+        slide.removeAttribute('aria-roledescription');
+        slide.removeAttribute('aria-label');
+      });
+      if (controls) controls.hidden = true;
+      if (markersNav) markersNav.hidden = true;
+      if (statusEl) statusEl.textContent = '';
+    }
+
+    function syncCarouselMode() {
+      if (mobileMq.matches) enableCarousel();
+      else disableCarousel();
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', () => {
+      const base = pendingTarget !== null ? pendingTarget : nearestSlide();
+      goToSlide(base - 1);
+    });
+    if (nextBtn) nextBtn.addEventListener('click', () => {
+      const base = pendingTarget !== null ? pendingTarget : nearestSlide();
+      goToSlide(base + 1);
+    });
+    if (track) {
+      track.addEventListener('scroll', onScroll, { passive: true });
+      if (supportsScrollEnd) track.addEventListener('scrollend', onSettle);
+      track.addEventListener('pointerdown', cancelPending, { passive: true });
+      track.addEventListener('touchstart', cancelPending, { passive: true });
+      track.addEventListener('wheel', cancelPending, { passive: true });
+    }
+    if (typeof mobileMq.addEventListener === 'function') {
+      mobileMq.addEventListener('change', syncCarouselMode);
+    } else if (typeof mobileMq.addListener === 'function') {
+      mobileMq.addListener(syncCarouselMode);
+    }
+    syncCarouselMode();
+  }
+
+  root.querySelectorAll('[data-kkg-carousel]').forEach(initCarousel);
 })();

@@ -6,7 +6,7 @@
  */
 var KK = Object.freeze({
   tabs: ['Upload', 'Closing', 'Klik WA', 'Panduan', 'Ringkasan', 'Pengaturan'],
-  timezone: 'Asia/Jakarta', pageLimit: 100, maxMs: 240000,
+  timezone: 'Asia/Jakarta', pageLimit: 100, syncMaxPages: 25, syncFetchMaxMs: 120000, maxMs: 240000,
   handler: 'syncWaLeadsToSheet', editHandler: 'kkOnEdit',
 });
 
@@ -100,21 +100,24 @@ function kkUpsertPlan_(existing, changes) {
 function kkSync_(ss, cfg, started) {
   var sheet = ss.getSheetByName('Klik WA'), props = PropertiesService.getScriptProperties(), cursor = cfg.cursor;
   var existing = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues().filter(function(r) { return r[7] !== ''; }) : [];
-  for (var page = 0; page < 25 && Date.now() - started < KK.maxMs; page++) {
+  var changes = [];
+  for (var page = 0; page < KK.syncMaxPages && Date.now() - started < KK.syncFetchMaxMs; page++) {
     var res = kkFetch_(cfg, cfg.url + '?after_change_id=' + cursor + '&limit=' + KK.pageLimit);
-    var changes = kkValidateBatch_(res, cursor);
-    if (!changes.length) break;
-    existing = kkUpsertPlan_(existing, changes);
-    kkCapacity_(sheet, existing.length + 1);
-    sheet.getRange(2, 1, existing.length, 4).setNumberFormat('@');
-    sheet.getRange(2, 6, existing.length, 2).setNumberFormat('@');
-    sheet.getRange(2, 5, existing.length, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-    sheet.getRange(2, 1, existing.length, 8).setValues(existing);
-    SpreadsheetApp.flush();
+    var batch = kkValidateBatch_(res, cursor);
+    if (!batch.length) break;
+    Array.prototype.push.apply(changes, batch);
     cursor = res.last_change_id;
-    props.setProperty('KK_LAST_CHANGE_ID', String(cursor));
     if (!res.has_more) break;
   }
+  if (!changes.length) return;
+  existing = kkUpsertPlan_(existing, changes);
+  kkCapacity_(sheet, existing.length + 1);
+  sheet.getRange(2, 1, existing.length, 4).setNumberFormat('@');
+  sheet.getRange(2, 6, existing.length, 2).setNumberFormat('@');
+  sheet.getRange(2, 5, existing.length, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sheet.getRange(2, 1, existing.length, 8).setValues(existing);
+  SpreadsheetApp.flush();
+  props.setProperty('KK_LAST_CHANGE_ID', String(cursor));
 }
 function kkOrderKey_(value) { return String(value == null ? '' : value).trim().toUpperCase(); }
 function kkPaidAt_(date, time) {
@@ -183,15 +186,15 @@ function kkUploadRow_(row, n, business, attr, settings, runStamp) {
   if (business.empty) return Array(16).fill('');
   var match = attr.match || {}, observed = attr.observed || '';
   var fingerprint = kkSnapshotGuard_(row, n);
-  var duplicate = 'ARRAYFORMULA(SUMPRODUCT(--(UPPER(TRIM(Closing!J$2:J))=P' + n + ')))';
-  var duplicateCheck = business.key ? ',' + duplicate + (business.duplicate ? '>1' : '=1') : '';
+  var expectedDup = business.duplicate ? '"Order ID duplikat"' : '""';
+  var duplicateCheck = ',ISFORMULA(Closing!I' + n + '),NOT(ISERROR(Closing!I' + n + ')),Closing!I' + n + '=' + expectedDup;
   var checks = fingerprint + duplicateCheck + ',Pengaturan!B2=' + kkLiteral_(settings.name) +
     ',Pengaturan!B3=' + kkLiteral_(settings.currency) + ',Pengaturan!B7=' + Number(settings.ageDays || 0) +
     ',Pengaturan!B8=' + Number(settings.windowDays || 0);
-  var reason = '=IF(AND(' + checks + '),' + kkLiteral_(attr.reason || '') + ',"Data berubah; rekonsiliasi ulang")';
+  var reason = '=IF(IFERROR(AND(' + checks + '),FALSE),' + kkLiteral_(attr.reason || '') + ',"Data berubah; rekonsiliasi ulang")';
   // Expire readiness after a day even if a scheduled job fails or a Property changes.
-  var ready = '=IF(AND(B' + n + '="",ISNUMBER(M' + n + '),N' + n + '>=M' + n +
-    ',N' + n + '-M' + n + '<=Pengaturan!B8,NOW()-M' + n + '<=Pengaturan!B7,NOW()<=' + (kkSerial_(new Date(runStamp)) + 1) + '),"Ya","Tidak")';
+  var ready = '=IF(IFERROR(AND(B' + n + '="",ISNUMBER(M' + n + '),N' + n + '>=M' + n +
+    ',N' + n + '-M' + n + '<=Pengaturan!B8,NOW()-M' + n + '<=Pengaturan!B7,NOW()<=' + (kkSerial_(new Date(runStamp)) + 1) + '),FALSE),"Ya","Tidak")';
   return [ready, reason, kkSafe_(match.gclid), kkSafe_(match.gbraid), kkSafe_(match.wbraid), kkSafe_(settings.name),
     business.paid ? Utilities.formatDate(business.paid, KK.timezone, "yyyy-MM-dd'T'HH:mm:ss") + '+07:00' : '',
     business.valid ? row[3] : '', kkSafe_(settings.currency), kkSafe_(business.key), kkSafe_(row[5]),
@@ -246,20 +249,21 @@ function kkReconcile_(ss, cfg, started) {
     if (attrs[i].match) out[11] = registryRows[String(attrs[i].match.reference_id)] || '';
     return out;
   });
+  closing.getRange(2, 8, raw.length, 2).setValues(business.map(function(b, i) {
+    var n = i + 2, guard = kkSnapshotGuard_(raw[i], n);
+    return [b.empty ? '' : '=IF(AND(' + guard + '),' + kkLiteral_(attrs[i].tracking) + ',"Belum diperiksa")',
+      b.empty ? '' : '=IF(AND(TRIM(J' + n + ')<>"",ARRAYFORMULA(SUMPRODUCT(--(UPPER(TRIM(J$2:J))=UPPER(TRIM(J' + n + ')))))>1),"Order ID duplikat","")'];
+  }));
+  closing.getRange(2, 12, raw.length, 1).setValues(business.map(function(b, i) {
+    var n = i + 2;
+    return [b.empty ? '' : '=IF(IFERROR(AND(' + kkSnapshotGuard_(raw[i], n) + ',ISFORMULA(I' + n + '),NOT(ISERROR(I' + n + ')),I' + n + '=""),FALSE),' +
+      kkLiteral_(b.valid ? 'Valid' : 'Belum lengkap') + ',"Belum lengkap")'];
+  }));
+  SpreadsheetApp.flush();
   upload.getRange(2, 3, raw.length, 5).setNumberFormat('@');
   upload.getRange(2, 9, raw.length, 3).setNumberFormat('@');
   upload.getRange(2, 13, raw.length, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
   upload.getRange(2, 1, raw.length, 16).setValues(output);
-  closing.getRange(2, 8, raw.length, 2).setValues(business.map(function(b, i) {
-    var n = i + 2, guard = kkSnapshotGuard_(raw[i], n);
-    return [b.empty ? '' : '=IF(AND(' + guard + '),' + kkLiteral_(attrs[i].tracking) + ',"Belum diperiksa")',
-      b.empty ? '' : '=IF(AND(J' + n + '<>"",ARRAYFORMULA(SUMPRODUCT(--(UPPER(TRIM(J$2:J))=UPPER(TRIM(J' + n + ')))))>1),"Order ID duplikat","")'];
-  }));
-  closing.getRange(2, 12, raw.length, 1).setValues(business.map(function(b, i) {
-    var n = i + 2;
-    return [b.empty ? '' : '=IF(AND(' + kkSnapshotGuard_(raw[i], n) + ',I' + n + '=""),' +
-      kkLiteral_(b.valid ? 'Valid' : 'Belum lengkap') + ',"Belum lengkap")'];
-  }));
   SpreadsheetApp.flush();
 }
 function kkCsInput_(r) { return [r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[9],r[10]]; }

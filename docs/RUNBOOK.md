@@ -8,17 +8,19 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
 
 ## 1. Prasyarat & Pembuatan Paket Plugin
 
-1. Jalankan seluruh verifikasi lokal dan bangun file distribusi ZIP:
+1. Jalankan verifikasi lokal dan bangun file distribusi ZIP (simpan salinan ZIP versi sebelumnya terlebih dahulu bila ingin menjadikannya kandidat rollback karena `package-plugin.ps1` menimpa `deliverables/kk-grosir.zip`):
    ```powershell
    npm.cmd test
-   node scripts/database-check.cjs
+   # Jalankan preview pada proses terpisah (npm.cmd run preview), lalu:
    node scripts/browser-check.cjs
    & ([scriptblock]::Create((Get-Content -LiteralPath scripts/verify-workbook.ps1 -Raw)))
    & ([scriptblock]::Create((Get-Content -LiteralPath scripts/package-plugin.ps1 -Raw)))
+   # Opsional bila skema/kontrak DB berubah dan target DB tes lokal terverifikasi:
+   # node scripts/database-check.cjs
    ```
-2. Hasil paket siap unggah tersedia pada:
-   - Plugin WordPress: `deliverables/kk-grosir.zip`
-   - Workbook template 6 tab: `deliverables/KK_Underwear_Offline_Conversion_Purchase_v1.xlsx`
+2. Hasil paket siap unggah tersedia pada (saat ini **Release Candidate `v0.2.5` untuk uji staging**; arsip rollback `v0.2.4` disimpan di `artifacts/releases/rollback-0.2.4/kk-grosir-0.2.4.zip` beserta manifes hash di `artifacts/releases/rc-0.2.5-manifest.json`):
+   - Plugin WordPress: `deliverables/kk-grosir.zip` (`v0.2.5`)
+   - Workbook template 6 tab: `deliverables/KK_Underwear_Offline_Conversion_Purchase_v1.xlsx` (tidak perlu dibangun ulang selama struktur/style baseline tidak berubah)
    - Apps Script: [apps-script/Code.gs](../apps-script/Code.gs) dan [apps-script/appsscript.json](../apps-script/appsscript.json)
    - Contoh konfigurasi secret: [config/wp-config.example.php](../config/wp-config.example.php)
 
@@ -57,7 +59,8 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
    - `KK_LAST_CHANGE_ID`: `0`
    - `KK_IMPORT_RULES_VERIFIED`: `false` (ubah ke `true` hanya setelah aturan conversion window & usia klik Google Ads disetujui melalui dokumen terpisah).
 5. Muat ulang spreadsheet, lalu dari menu **KK Grosir → Run Diagnostics** pastikan log Apps Script menampilkan kontrak API dan 6 tab valid tanpa mencetak secret maupun data pribadi.
-6. Jalankan **KK Grosir → Pasang trigger 15 menit** (`installKkSyncTrigger`) untuk mengaktifkan sinkronisasi periodik dan invalidasi edit (`kkOnEdit`).
+6. **Jika menerapkan pembaruan `Code.gs` ke spreadsheet yang sudah berisi baris `Closing`**, jalankan **KK Grosir → Sync / Retry / Rekonsiliasi** sekali secara manual agar seluruh kolom turunan (`Closing!H:I`, `Closing!L`, dan `Upload!A:P`, termasuk penyatuan pemeriksaan duplikat `Closing!I` → `Upload!B` beserta guard `ISFORMULA`/`IFERROR`) langsung teregenerasi memakai aturan terbaru sebelum mengaktifkan trigger otomatis.
+7. Jalankan **KK Grosir → Pasang trigger 15 menit** (`installKkSyncTrigger`) untuk mengaktifkan sinkronisasi periodik dan invalidasi edit (`kkOnEdit`).
 
 ---
 
@@ -115,5 +118,17 @@ Hanya dilakukan setelah pemilik bisnis menyetujui seluruh blocker secara eksplis
 3. **Rollback instan landing page / plugin**:
    - Ubah `mode` menjadi `off` di **Settings → KK Grosir** (endpoint langsung menutup dengan `503` dan `/grosir/` berhenti mengambil alih template), lalu nonaktifkan plugin **KK Grosir Landing & Offline Attribution** bila perlu.
    - Pulihkan konten halaman `/grosir/` dari backup jika ingin mengembalikan halaman lama.
-   - **Jangan menghapus** tabel `{prefix}kkg_*` atau data tab `Closing` saat rollback agar jejak audit dan data transaksi tetap aman.
+   - **Jangan menghapus** tabel `{prefix}kkg_*`, `Klik WA`, `KK_LAST_CHANGE_ID`, maupun data ledger `Closing` saat rollback agar jejak audit dan data transaksi tetap aman.
+4. **Urutan Pembaruan Terkendali & Pemulihan Versi (Plugin + Apps Script)**:
+   - **Langkah pembaruan ke `v0.2.5` + `Code.gs` baru:**
+     1. Ambil **backup penuh** (database MySQL, ZIP plugin sebelumnya mis. `kk-grosir-0.2.4.zip`, salinan Google Sheet, dan nilai `KK_LAST_CHANGE_ID`).
+     2. **Hentikan trigger Apps Script** (**KK Grosir → Stop trigger KK**).
+     3. **Pasang** versi `Code.gs` dan/atau plugin ZIP yang sudah ditinjau (**Plugins → Add New → Upload Plugin**).
+     4. Jalankan **KK Grosir → Run Diagnostics** hingga log memastikan kontrak API dan enam tab OK.
+     5. Jalankan **KK Grosir → Sync / Retry / Rekonsiliasi** sebagai uji sinkronisasi & regenerasi kolom turunan (`Klik WA`, `Closing!H:I`, `Closing!L`, `Upload!A:P`), lalu **verifikasi** hasilnya tanpa error (jangan aktifkan impor Google Ads).
+     6. **Aktifkan kembali trigger** yang diotorisasi (**KK Grosir → Pasang trigger 15 menit**).
+   - **Jika pembaruan gagal di salah satu tahap:**
+     1. Segera jalankan **KK Grosir → Stop trigger KK**.
+     2. Pulihkan paket plugin versi sebelumnya (`artifacts/releases/rollback-0.2.4/kk-grosir-0.2.4.zip`) dan salinan `Code.gs` sebelumnya secara berpasangan bila terkait.
+     3. Jalankan ulang **Run Diagnostics** dan **Sync / Retry / Rekonsiliasi** (*replay* aman tanpa duplikasi baris `Klik WA`) untuk memverifikasi keutuhan data & `KK_LAST_CHANGE_ID` **tanpa mereset ledger transaksi `Closing` atau `KK_LAST_CHANGE_ID` secara sembarang**.
 
