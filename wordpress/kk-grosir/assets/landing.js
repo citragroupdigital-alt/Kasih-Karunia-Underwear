@@ -16,6 +16,7 @@
   let pending = false;
   let toastTimer = null;
   let heroPassed = false;
+  let externalDialogOpen = false;
   const visibleGuards = new Set();
 
   function read(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; } }
@@ -35,7 +36,7 @@
   function syncOverlays() {
     root.classList.toggle('kkg-has-banner', !banner.hidden);
     if (!stickyBar) return;
-    const show = heroPassed && visibleGuards.size === 0 && banner.hidden && !dialog.open;
+    const show = heroPassed && visibleGuards.size === 0 && banner.hidden && !dialog.open && !externalDialogOpen;
     stickyBar.hidden = !show;
     root.classList.toggle('kkg-has-sticky', show);
   }
@@ -85,8 +86,8 @@
   }
   function openChoices() {
     if (cfg.consentMode === 'external') {
-      window.dispatchEvent(new CustomEvent('kkg:open-consent'));
       showStatus('Permintaan membuka pengaturan privasi dikirim ke pengelola cookie situs.');
+      window.dispatchEvent(new CustomEvent('kkg:open-consent'));
     } else if (cfg.consentMode === 'standalone') {
       dialog.querySelector('[name="kkg-advertising"]').checked = consent.advertising;
       dialog.querySelector('[name="kkg-analytics"]').checked = consent.analytics;
@@ -108,9 +109,15 @@
     const saved = read('kkg-consent');
     if (saved && saved.version === cfg.policyVersion && saved.expires > Date.now()) applyConsent(saved, false);
     else { remove('kkg-consent'); remove('kkg-click'); remove('kkg-token'); banner.hidden = false; }
+  } else if (cfg.consentMode === 'external') {
+    remove('kkg-consent');
   } else if (cfg.consentMode === 'disabled') {
-    remove('kkg-click'); remove('kkg-token');
+    remove('kkg-consent'); remove('kkg-click'); remove('kkg-token');
   }
+  window.addEventListener('kkg:external-dialog', event => {
+    externalDialogOpen = Boolean(event && event.detail && event.detail.open);
+    syncOverlays();
+  });
   syncOverlays();
 
   root.querySelectorAll('[data-kkg-settings],[data-kkg-choices]').forEach(el => el.addEventListener('click', openChoices));

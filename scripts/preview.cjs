@@ -14,7 +14,7 @@ const server = http.createServer((req, res) => {
       const html = execFileSync(php, [path.join(__dirname, 'render-preview.php'), modeArg, consentArg], { encoding: 'utf8' });
       res.writeHead(200, {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}); res.end(html);
     } catch (_) { res.writeHead(500); res.end('PHP preview failed'); }
-  } else if (['/assets/landing.css', '/assets/landing.js', '/assets/logo-kk.webp', '/assets/hero-kk.webp', '/assets/about-gudang-kk.webp', '/assets/category-0-bra-wanita.webp', '/assets/category-1-cd-pria.webp', '/assets/category-2-cd-wanita.webp', '/assets/category-3-kaos-kaki.webp', '/assets/category-4-handuk.webp', '/assets/inter-latin-wght-normal.woff2'].includes(reqUrl.pathname)) {
+  } else if (['/assets/landing.css', '/assets/landing.js', '/assets/cookiebot-bridge.js', '/assets/logo-kk.webp', '/assets/hero-kk.webp', '/assets/about-gudang-kk.webp', '/assets/category-0-bra-wanita.webp', '/assets/category-1-cd-pria.webp', '/assets/category-2-cd-wanita.webp', '/assets/category-3-kaos-kaki.webp', '/assets/category-4-handuk.webp', '/assets/inter-latin-wght-normal.woff2'].includes(reqUrl.pathname)) {
     const type = reqUrl.pathname.endsWith('.css') ? 'text/css' : reqUrl.pathname.endsWith('.webp') ? 'image/webp' : reqUrl.pathname.endsWith('.woff2') ? 'font/woff2' : 'text/javascript';
     res.writeHead(200, {'Content-Type': type});
     res.end(fs.readFileSync(path.join(root,'wordpress/kk-grosir',reqUrl.pathname)));

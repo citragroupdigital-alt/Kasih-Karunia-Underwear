@@ -12,4 +12,4 @@ if ($consentArg !== 'disabled') {
 <?php kkg_seo_render_head(); ?><link rel="stylesheet" href="/assets/landing.css?v=<?php echo esc_attr(KKG_VERSION); ?>"></head><body class="kkg-page">
 <?php echo kkg_render(); ?>
 <script>window.KKG=<?php echo json_encode(array('endpoint'=>'/api/handoff','fallback'=>kkg_wa_url(),'consentMode'=>$consentArg,'policyVersion'=>'draft-1','nonce'=>'')); ?>;</script>
-<script src="/assets/landing.js?v=<?php echo esc_attr(KKG_VERSION); ?>"></script></body></html>
+<script src="/assets/landing.js?v=<?php echo esc_attr(KKG_VERSION); ?>"></script><?php if ($consentArg === 'external'): ?><script src="/assets/cookiebot-bridge.js?v=<?php echo esc_attr(KKG_VERSION); ?>"></script><?php endif; ?></body></html>

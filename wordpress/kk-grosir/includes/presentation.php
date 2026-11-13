@@ -29,13 +29,33 @@ function kkg_assets() {
     $s = kkg_settings();
     if ($s['mode'] === 'staging' && !current_user_can('manage_options')) { return; }
     if ($s['mode'] === 'active' && kkg_release_blockers($s)) { return; }
+    $consent_mode = kkg_consent_mode($s);
     wp_enqueue_style('kk-grosir', KKG_URL . 'assets/landing.css', array(), KKG_VERSION);
     wp_enqueue_script('kk-grosir', KKG_URL . 'assets/landing.js', array(), KKG_VERSION, true);
     wp_add_inline_script('kk-grosir', 'window.KKG=' . wp_json_encode(array(
         'endpoint' => rest_url('kk-offline/v1/handoff'),
-        'fallback' => kkg_wa_url(), 'consentMode' => kkg_consent_mode($s),
+        'fallback' => kkg_wa_url(), 'consentMode' => $consent_mode,
         'policyVersion' => $s['policy_version'], 'nonce' => current_user_can('manage_options') ? wp_create_nonce('wp_rest') : '',
     ), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';', 'before');
+    if ($consent_mode === 'external') {
+        wp_enqueue_script('kk-grosir-cookiebot', KKG_URL . 'assets/cookiebot-bridge.js', array('kk-grosir'), KKG_VERSION, true);
+    }
+}
+function kkg_script_loader_tag($tag, $handle) {
+    if (!in_array($handle, array('kk-grosir', 'kk-grosir-cookiebot'), true) ||
+        !kkg_is_page() || kkg_consent_mode() !== 'external' ||
+        strpos($tag, 'data-cookieconsent=') !== false) {
+        return $tag;
+    }
+    return preg_replace('/<script(?=\s)/', '<script data-cookieconsent="ignore"', $tag, 1) ?? $tag;
+}
+function kkg_inline_script_attributes($attributes) {
+    if (($attributes['id'] ?? '') === 'kk-grosir-js-before' &&
+        kkg_is_page() && kkg_consent_mode() === 'external' &&
+        !isset($attributes['data-cookieconsent'])) {
+        $attributes['data-cookieconsent'] = 'ignore';
+    }
+    return $attributes;
 }
 function kkg_image($key, $label, $priority = false, $alt = '') {
     $s = kkg_settings();

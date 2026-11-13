@@ -12,7 +12,8 @@ Target: plugin WordPress lokal untuk staging, bukan deployment live. PRD dan AGE
 
 ## Perubahan file
 
-- wordpress/kk-grosir/kk-grosir.php: bootstrap, versi plugin/aset (`0.2.6` / `KKG_VERSION`), pemuatan modul, dan hooks WordPress (kandidat uji staging `deliverables/kk-grosir.zip` & `artifacts/releases/kk-grosir-0.2.6-rc.zip` v`0.2.6`; arsip rollback `v0.2.5` disimpan di `artifacts/releases/rollback-0.2.5/`, dan `v0.2.4` di `artifacts/releases/rollback-0.2.4/`).
+- wordpress/kk-grosir/kk-grosir.php: bootstrap, versi plugin/aset (`0.2.7` / `KKG_VERSION`), pemuatan modul, dan hooks WordPress termasuk `script_loader_tag` & `wp_inline_script_attributes` untuk pengecualian Automatic Cookie Blocking Cookiebot khusus aset KK Grosir (`deliverables/kk-grosir.zip` v`0.2.7`; arsip `v0.2.6` di `artifacts/releases/kk-grosir-0.2.6-rc.zip`, `v0.2.5` di `artifacts/releases/rollback-0.2.5/`, dan `v0.2.4` di `artifacts/releases/rollback-0.2.4/`).
+- wordpress/kk-grosir/assets/cookiebot-bridge.js: adapter resmi Cookiebot JS SDK (`window.Cookiebot` <-> `KKConsent`, `kkg:open-consent`, dan `kkg:external-dialog`) khusus halaman `/grosir/` saat `consent_mode = external` dengan default *fail-closed* bila Cookiebot belum merespons (`hasResponse !== true`), diblokir, atau gagal dimuat.
 - includes/testimonials.php: pemisahan data section Testimoni Mitra (`kkg_testimonials_data`) dari markup template serta gate visibilitas (`kkg_visible_testimonials`) yang menyembunyikan placeholder di mode `active` publik maupun non-admin.
 - includes/settings.php: pengaturan, gate publikasi, konfigurasi aman dan kesehatan integrasi.
 - includes/domain.php: validasi input, kode tahunan, waktu dan pesan WA.

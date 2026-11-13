@@ -2,13 +2,13 @@
 /**
  * Plugin Name: KK Grosir Landing & Offline Attribution
  * Description: Landing grosir terisolasi, handoff WhatsApp dan dataset Purchase offline.
- * Version: 0.2.6
+ * Version: 0.2.7
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * License: GPL-2.0-or-later
  */
 defined('ABSPATH') || exit;
-define('KKG_VERSION', '0.2.6');
+define('KKG_VERSION', '0.2.7');
 define('KKG_DIR', plugin_dir_path(__FILE__));
 define('KKG_URL', plugin_dir_url(__FILE__));
 foreach (array('domain', 'settings', 'store', 'api', 'presentation', 'seo', 'testimonials') as $module) {
@@ -25,6 +25,8 @@ add_action('rest_api_init', 'kkg_register_api');
 add_shortcode('kk_grosir', 'kkg_render');
 add_filter('template_include', 'kkg_template', 99);
 add_action('wp_enqueue_scripts', 'kkg_assets');
+add_filter('script_loader_tag', 'kkg_script_loader_tag', 10, 2);
+add_filter('wp_inline_script_attributes', 'kkg_inline_script_attributes');
 add_action('wp', 'kkg_seo_page_isolation', 99);
 add_filter('pre_get_document_title', 'kkg_seo_filter_title', 999);
 add_action('wp_head', 'kkg_seo_wp_head', 5);

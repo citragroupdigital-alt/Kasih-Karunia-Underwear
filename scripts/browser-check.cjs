@@ -444,6 +444,134 @@ const path = require('node:path');
     await f.p.evaluate(()=>window.KKConsent.set({advertising:false}));
     assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-click')),null);
     await f.context.close();results.push({externalCMP:'no second banner; dispatches kkg:open-consent safely; withdrawal clears stored IDs'});
+    assert.equal((await getModeHtml('disabled')).includes('cookiebot-bridge.js'),false,'disabled mode HTML omits cookiebot-bridge.js');
+    assert.equal((await getModeHtml('standalone')).includes('cookiebot-bridge.js'),false,'standalone mode HTML omits cookiebot-bridge.js');
+    assert.equal((await getModeHtml('external')).includes('cookiebot-bridge.js'),true,'external mode HTML loads cookiebot-bridge.js');
+    function makeCookiebotStub({hasResponse=false,marketing=false,statistics=false,preferences=false,necessary=true,declined=false,omitRenew=false,persistCookie=false}={}){
+      const cfg=JSON.stringify({hasResponse,marketing,statistics,preferences,necessary,declined,omitRenew,persistCookie});
+      return `<script>(function(){var cfg=${cfg};function readCookie(){var m=document.cookie.match(/(?:^|; )CookieConsent=([^;]+)/);if(!m)return null;try{return JSON.parse(decodeURIComponent(m[1]));}catch(_){return null;}}var state=cfg.persistCookie&&readCookie()||cfg;function apply(s){window.Cookiebot={hasResponse:!!s.hasResponse,consented:!!s.hasResponse&&!s.declined,declined:!!s.declined,dialog:{visible:!s.hasResponse},consent:{necessary:s.necessary!==false,preferences:!!s.preferences,statistics:!!s.statistics,marketing:!!s.marketing}};if(!cfg.omitRenew){window.Cookiebot.renew=function(){window.__renewCalls=(window.__renewCalls||0)+1;window.Cookiebot.dialog.visible=true;window.dispatchEvent(new Event('CookiebotOnDialogDisplay'));};}window.Cookiebot.show=function(){window.__showCalls=(window.__showCalls||0)+1;window.Cookiebot.dialog.visible=true;window.dispatchEvent(new Event('CookiebotOnDialogDisplay'));};}apply(state);window.__mockCookiebotRespond=function(next){state=Object.assign({},state,next);if(cfg.persistCookie){document.cookie='CookieConsent='+encodeURIComponent(JSON.stringify(state))+'; path=/';}apply(state);window.Cookiebot.dialog.visible=false;window.dispatchEvent(new Event('CookiebotOnConsentReady'));window.dispatchEvent(new Event(state.declined?'CookiebotOnDecline':'CookiebotOnAccept'));window.dispatchEvent(new Event('CookiebotOnLoad'));};})();</script>`;
+    }
+    async function cookiebotFixture({headHtml='',query='?gclid=cb-click-123',viewport={width:1280,height:800},seedStaleStorage=false,seedCookies=null,abortCookiebot=false,asyncCookiebotBody=null}={}){
+      const context=await browser.newContext({viewport});
+      if(seedCookies)await context.addCookies(seedCookies);
+      if(seedStaleStorage){
+        await context.addInitScript(()=>{if(!sessionStorage.getItem('__kkgSeeded')){sessionStorage.setItem('__kkgSeeded','1');localStorage.setItem('kkg-click',JSON.stringify({click:{gclid:'stale-gclid'},expires:Date.now()+86400000}));localStorage.setItem('kkg-token',JSON.stringify({value:'a'.repeat(64),expires:Date.now()+86400000}));}});
+      }
+      const p=await context.newPage();
+      const consoleErrors=[];const trackerRequests=[];const requests=[];
+      p.on('pageerror',e=>errors.push(e.message));
+      p.on('console',msg=>{if(msg.type()==='error'&&!(abortCookiebot&&msg.text().includes('ERR_FAILED')))consoleErrors.push(msg.text());});
+      p.on('request',req=>{if(/googletagmanager\.com|google-analytics\.com|doubleclick\.net|connect\.facebook\.net|facebook\.com\/tr/i.test(req.url()))trackerRequests.push(req.url());});
+      const baseHtml=await getModeHtml('external');
+      const body=baseHtml.replace(/(["']?fallback["']?):(?:'[^']*'|"[^"]*")/,'$1:"https://wa.me/test-only"')
+        .replace('<main id="kkg-main" tabindex="-1">','<main id="kkg-main" tabindex="-1"><a id="test-cta" data-kkg-cta="hero" href="https://wa.me/test-only">Test-only CTA</a>')
+        .replace('</head>',headHtml+'</head>');
+      await p.route('http://127.0.0.1:4173/**',(r)=>{const u=new URL(r.request().url());if(u.pathname==='/'){return r.fulfill({contentType:'text/html',body});}return r.continue();});
+      if(abortCookiebot){await p.route('https://consent.cookiebot.com/uc.js',r=>r.abort('failed'));}
+      else if(asyncCookiebotBody!==null){await p.route('https://consent.cookiebot.com/uc.js',async r=>{await new Promise(res=>setTimeout(res,80));await r.fulfill({status:200,contentType:'application/javascript',body:asyncCookiebotBody});});}
+      await p.route('https://wa.me/**',r=>r.fulfill({contentType:'text/html',body:'<p>Intercepted test WA navigation.</p>'}));
+      await p.route('**/api/handoff',async r=>{requests.push(r.request().postDataJSON());await r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({reference_code:'KK-GA260002',expires_at:new Date(Date.now()+86400000).toISOString(),wa_url:'https://wa.me/test-only?text=Kode%20Referensi%3A%20KK-GA260002'})});});
+      await p.goto('http://127.0.0.1:4173/'+query);
+      return {context,p,requests,consoleErrors,trackerRequests};
+    }
+    // 1 & 12. Initial load without response (even with marketing=true in stub) stays fail-closed, clears stale storage, hides sticky on Dialog, allows WA without IDs or trackers.
+    f=await cookiebotFixture({headHtml:makeCookiebotStub({hasResponse:false,marketing:true,statistics:false,declined:false}),viewport:{width:375,height:700},seedStaleStorage:true});
+    assert.deepEqual(await f.p.evaluate(()=>window.KKConsent.get()),{storage:false,advertising:false,analytics:false,version:'draft-1'},'unresponded Cookiebot stays fail-closed even if marketing=true');
+    assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-consent')),null,'external mode clears standalone kkg-consent');
+    assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-click')),null,'stale click ID wiped when unresponded');
+    assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-token')),null,'stale token wiped when unresponded');
+    assert.equal(await f.p.locator('[data-kkg-banner]').isVisible(),false,'external mode hides standalone banner');
+    await f.p.evaluate(()=>window.scrollTo(0,1100));await f.p.waitForTimeout(80);
+    assert.equal(await f.p.locator('[data-kkg-sticky]').isVisible(),false,'mobile sticky hidden while Cookiebot dialog visible');
+    await f.p.locator('#test-cta').click();await f.p.waitForURL('https://wa.me/**');
+    assert.deepEqual(f.requests[0].click,{},'WA handoff before response sends empty click');
+    assert.equal(f.requests[0].token,'','WA handoff before response sends empty token');
+    assert.deepEqual(f.trackerRequests,[],'zero third-party tracker requests emitted');
+    assert.deepEqual(f.consoleErrors,[],'zero console errors on unresponded Cookiebot');
+    await f.context.close();
+    // 2, 3, 4, 5, 6, 11, 13. Consent categories matrix, preferences/necessary isolation, withdraw cleanup without deleting external cookies, renew/show hooks, sticky visibility, WA handoff.
+    f=await cookiebotFixture({
+      headHtml:makeCookiebotStub({hasResponse:false,persistCookie:true}),viewport:{width:375,height:700},
+      seedCookies:[{name:'CookieConsent',value:'{stamp:%27abc%27}',url:'http://127.0.0.1:4173'},{name:'woocommerce_items_in_cart',value:'1',url:'http://127.0.0.1:4173'}]
+    });
+    await f.p.evaluate(()=>window.__mockCookiebotRespond({hasResponse:true,marketing:false,statistics:true,preferences:true,necessary:true,declined:false}));
+    assert.deepEqual(await f.p.evaluate(()=>window.KKConsent.get()),{storage:false,advertising:false,analytics:true,version:'draft-1'},'statistics/preferences/necessary only keeps advertising=false');
+    assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-click')),null,'statistics-only never stores gclid');
+    await f.p.evaluate(()=>window.__mockCookiebotRespond({hasResponse:true,marketing:false,statistics:false,declined:true}));
+    assert.deepEqual(await f.p.evaluate(()=>window.KKConsent.get()),{storage:false,advertising:false,analytics:false,version:'draft-1'},'deny clears both advertising and analytics');
+    await f.p.evaluate(()=>window.__mockCookiebotRespond({hasResponse:true,marketing:true,statistics:false,declined:false}));
+    assert.deepEqual(await f.p.evaluate(()=>window.KKConsent.get()),{storage:true,advertising:true,analytics:false,version:'draft-1'},'marketing-only grants advertising=true analytics=false');
+    assert.equal(await f.p.evaluate(()=>JSON.parse(localStorage.getItem('kkg-click')).click.gclid),'cb-click-123','marketing-only stores gclid');
+    await f.p.evaluate(()=>window.__mockCookiebotRespond({hasResponse:true,marketing:true,statistics:true,declined:false}));
+    assert.deepEqual(await f.p.evaluate(()=>window.KKConsent.get()),{storage:true,advertising:true,analytics:true,version:'draft-1'},'allow-all grants both advertising and analytics');
+    await f.p.evaluate(()=>window.scrollTo(0,1100));
+    await f.p.waitForFunction(()=>!document.querySelector('[data-kkg-sticky]').hidden);
+    await f.p.evaluate(()=>{document.querySelector('[data-kkg-settings]').click();});
+    assert.equal(await f.p.evaluate(()=>window.__renewCalls),1,'privacy settings button invokes Cookiebot.renew()');
+    await f.p.waitForFunction(()=>document.querySelector('[data-kkg-sticky]').hidden);
+    await f.p.evaluate(()=>window.__mockCookiebotRespond({hasResponse:true,marketing:true,statistics:true,declined:false}));
+    await f.p.locator('#test-cta').click();await f.p.waitForURL('https://wa.me/**');
+    assert.equal(f.requests[0].click.gclid,'cb-click-123','WA handoff sends gclid when marketing consented');
+    assert.match(f.requests[0].token,/^[a-f0-9]{64}$/,'WA handoff sends 64-hex token when marketing consented');
+    assert.equal(f.p.url().includes('cb-click-123'),false,'WA URL excludes gclid');
+    await f.p.goto('http://127.0.0.1:4173/?gclid=cb-withdraw');
+    await f.p.evaluate(()=>window.__mockCookiebotRespond({hasResponse:true,marketing:true,statistics:true,declined:false}));
+    assert.notEqual(await f.p.evaluate(()=>localStorage.getItem('kkg-click')),null);
+    assert.notEqual(await f.p.evaluate(()=>localStorage.getItem('kkg-token')),null,'token populated before withdraw');
+    await f.p.evaluate(()=>window.__mockCookiebotRespond({hasResponse:true,marketing:false,statistics:false,declined:true}));
+    assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-click')),null,'withdraw removes kkg-click');
+    assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-token')),null,'withdraw removes kkg-token');
+    const cookieStr=await f.p.evaluate(()=>document.cookie);
+    assert.equal(cookieStr.includes('CookieConsent=')&&cookieStr.includes('woocommerce_items_in_cart=1'),true,'external CookieConsent and WooCommerce cookies preserved');
+    assert.deepEqual(f.consoleErrors,[],'zero console errors across consent matrix');
+    assert.deepEqual(f.trackerRequests,[],'zero third-party tracker requests in matrix');
+    await f.context.close();
+    // 11b. Cookiebot.show() fallback when renew() unavailable.
+    f=await cookiebotFixture({headHtml:makeCookiebotStub({hasResponse:true,marketing:false,statistics:false,declined:true,omitRenew:true})});
+    await f.p.locator('[data-kkg-settings]').click();
+    assert.equal(await f.p.evaluate(()=>window.__showCalls),1,'falls back to Cookiebot.show() when renew() missing');
+    await f.context.close();
+    // 7 & 8. Reload persistence after Deny and after Allow All (without ?gclid= in URL).
+    f=await cookiebotFixture({headHtml:makeCookiebotStub({hasResponse:false,persistCookie:true}),query:'?gclid=cb-reload-keep'});
+    await f.p.evaluate(()=>window.__mockCookiebotRespond({hasResponse:true,marketing:false,statistics:false,declined:true}));
+    await f.p.goto('http://127.0.0.1:4173/?gclid=cb-reload-deny');
+    assert.deepEqual(await f.p.evaluate(()=>window.KKConsent.get()),{storage:false,advertising:false,analytics:false,version:'draft-1'},'reload after Deny stays declined even with ?gclid=');
+    assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-click')),null,'reload after Deny does not capture ?gclid=');
+    await f.p.goto('http://127.0.0.1:4173/?gclid=cb-reload-keep');
+    await f.p.evaluate(()=>window.__mockCookiebotRespond({hasResponse:true,marketing:true,statistics:true,declined:false}));
+    assert.equal(await f.p.evaluate(()=>JSON.parse(localStorage.getItem('kkg-click')).click.gclid),'cb-reload-keep');
+    await f.p.goto('http://127.0.0.1:4173/');
+    assert.deepEqual(await f.p.evaluate(()=>window.KKConsent.get()),{storage:true,advertising:true,analytics:true,version:'draft-1'},'reload without ?gclid= restores consent');
+    assert.equal(await f.p.evaluate(()=>JSON.parse(localStorage.getItem('kkg-click')).click.gclid),'cb-reload-keep','reload without ?gclid= preserves stored gclid');
+    await f.p.locator('#test-cta').click();await f.p.waitForURL('https://wa.me/**');
+    assert.equal(f.requests[0].click.gclid,'cb-reload-keep','WA CTA after clean reload uses preserved gclid');
+    assert.match(f.requests[0].token,/^[a-f0-9]{64}$/,'WA CTA after clean reload issues 64-hex token');
+    assert.deepEqual(f.consoleErrors,[]);
+    await f.context.close();
+    // 9. Async late-loaded Cookiebot script syncs cleanly on CookiebotOnConsentReady.
+    f=await cookiebotFixture({
+      headHtml:'<script id="Cookiebot" async src="https://consent.cookiebot.com/uc.js"></script>',
+      query:'?gclid=cb-async-999',
+      asyncCookiebotBody:'window.Cookiebot={hasResponse:true,consented:true,declined:false,dialog:{visible:false},consent:{necessary:true,preferences:true,statistics:true,marketing:true},renew:function(){}};window.dispatchEvent(new Event("CookiebotOnConsentReady"));'
+    });
+    assert.deepEqual(await f.p.evaluate(()=>window.KKConsent.get()),{storage:true,advertising:true,analytics:true,version:'draft-1'},'async Cookiebot synced on ready');
+    assert.equal(await f.p.evaluate(()=>JSON.parse(localStorage.getItem('kkg-click')).click.gclid),'cb-async-999','async Cookiebot captured URL gclid');
+    assert.deepEqual(f.consoleErrors,[]);
+    await f.context.close();
+    // 10. Blocked Cookiebot script fails closed safely without JS crash and keeps WA open.
+    f=await cookiebotFixture({headHtml:'<script id="Cookiebot" async src="https://consent.cookiebot.com/uc.js"></script>',query:'?gclid=cb-blocked',seedStaleStorage:true,abortCookiebot:true});
+    assert.deepEqual(await f.p.evaluate(()=>window.KKConsent.get()),{storage:false,advertising:false,analytics:false,version:'draft-1'},'blocked Cookiebot stays fail-closed');
+    assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-click')),null,'blocked Cookiebot wipes stale click ID');
+    assert.equal(await f.p.evaluate(()=>localStorage.getItem('kkg-token')),null,'blocked Cookiebot wipes stale token');
+    await f.p.locator('[data-kkg-settings]').click();
+    const blockedStatus=await f.p.locator('[data-kkg-status]').innerText();
+    assert.equal(blockedStatus.includes('Cookiebot')&&!blockedStatus.toLowerCase().includes('dibuka'),true,'blocked Cookiebot displays safe fallback message');
+    await f.p.locator('#test-cta').click();await f.p.waitForURL('https://wa.me/**');
+    assert.deepEqual(f.requests[0].click,{},'blocked Cookiebot WA handoff omits click ID');
+    assert.equal(f.requests[0].token,'','blocked Cookiebot WA handoff omits token');
+    assert.deepEqual(f.consoleErrors,[],'no unexpected JS errors when Cookiebot blocked');
+    await f.context.close();
+    results.push({cookiebotBridge:'15 scenarios verified: fail-closed default, granular categories, withdraw/reload persistence, async & blocked fallback, renew/show hooks, WooCommerce/external cookie safety, zero trackers & zero JS errors'});
     const landingJs=fs.readFileSync('wordpress/kk-grosir/assets/landing.js','utf8');
     assert.equal(/window\.addEventListener\(\s*['"]scroll['"]/.test(landingJs),false,'no ongoing window scroll listener in landing.js');
     for(const width of [320,375,390]){

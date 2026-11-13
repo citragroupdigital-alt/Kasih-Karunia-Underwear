@@ -68,8 +68,8 @@ check(count($ld['@graph'][3]['itemListElement']) === count(kkg_catalog_items()) 
 check(count($ld['@graph'][4]['mainEntity']) === count(kkg_faq_items()) && count(kkg_faq_items()) === 8, 'FAQPage schema matches 8 FAQ items');
 $ldJson = json_encode($ld);
 check(strpos($ldJson, 'Review') === false && strpos($ldJson, 'AggregateRating') === false, 'No Review or AggregateRating schema emitted');
-check(KKG_VERSION === '0.2.6', 'Plugin/asset version bumped to 0.2.6');
-check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.6') !== false, 'Main plugin header version 0.2.6');
+check(KKG_VERSION === '0.2.7', 'Plugin/asset version bumped to 0.2.7');
+check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.7') !== false, 'Main plugin header version 0.2.7');
 check(kkg_visible_testimonials(array('mode' => 'active')) === array(), 'Placeholders hidden on public active mode');
 check(kkg_visible_testimonials(array('mode' => 'off')) === array(), 'Placeholders hidden when mode off');
 $GLOBALS['kkg_test_can_manage'] = false;
@@ -219,5 +219,56 @@ foreach ($cleanupCases as $case) {
 }
 check((int) ($GLOBALS['kkg_test_options']['kkg_retention_cursor'] ?? 0) === 42, 'kkg_cleanup updates retention cursor when prerequisites pass');
 unset($GLOBALS['kkg_test_privacy_url'], $GLOBALS['kkg_test_post_statuses'], $GLOBALS['kkg_test_options']['wp_page_for_privacy_policy'], $GLOBALS['kkg_test_options']['kkg_retention_cursor'], $GLOBALS['wpdb']);
+
+// Cookiebot Consent Bridge enqueue & script attribute filter tests (non-/grosir/, disabled, standalone, external).
+$runAssetCase = function (bool $isPage, string $consentMode, int $privacyReviewed = 1): array {
+    $GLOBALS['kkg_test_is_page'] = $isPage;
+    $GLOBALS['kkg_test_can_manage'] = true;
+    $GLOBALS['kkg_test_options']['kkg_settings'] = array(
+        'mode' => 'staging',
+        'page_id' => 5009,
+        'privacy_reviewed' => $privacyReviewed,
+        'consent_mode' => $consentMode,
+    );
+    $GLOBALS['kkg_test_styles'] = array();
+    $GLOBALS['kkg_test_scripts'] = array();
+    $GLOBALS['kkg_test_inline_scripts'] = array();
+    kkg_assets();
+    return array($GLOBALS['kkg_test_styles'], $GLOBALS['kkg_test_scripts'], $GLOBALS['kkg_test_inline_scripts']);
+};
+list($wcStyles, $wcScripts) = $runAssetCase(false, 'external');
+check($wcStyles === array() && $wcScripts === array(), 'non-/grosir/ page (WooCommerce/shop) enqueues no KK Grosir assets');
+$otherTag = '<script src="https://example.test/pys.js"></script>';
+check(kkg_script_loader_tag($otherTag, 'kk-grosir-cookiebot') === $otherTag, 'script_loader_tag skips non-/grosir/ pages');
+check(kkg_inline_script_attributes(array('id' => 'kk-grosir-js-before')) === array('id' => 'kk-grosir-js-before'), 'inline_script_attributes skips non-/grosir/ pages');
+
+list(, $unreviewedScripts, $unreviewedInline) = $runAssetCase(true, 'external', 0);
+check(isset($unreviewedScripts['kk-grosir']) && !isset($unreviewedScripts['kk-grosir-cookiebot']), 'external without privacy_reviewed falls back to disabled and omits bridge');
+check(strpos($unreviewedInline[0][1] ?? '', '"consentMode":"disabled"') !== false, 'unreviewed external exposes consentMode=disabled');
+
+foreach (array('disabled', 'standalone') as $nonExtMode) {
+    list(, $modeScripts, $modeInline) = $runAssetCase(true, $nonExtMode);
+    check(isset($modeScripts['kk-grosir']) && !isset($modeScripts['kk-grosir-cookiebot']), "$nonExtMode mode omits cookiebot-bridge.js");
+    check(strpos($modeInline[0][1] ?? '', '"consentMode":"' . $nonExtMode . '"') !== false, "$nonExtMode inline config matches mode");
+    $kkgTag = '<script src="/assets/landing.js"></script>';
+    check(kkg_script_loader_tag($kkgTag, 'kk-grosir') === $kkgTag, "$nonExtMode leaves kk-grosir script tag untouched");
+    check(kkg_inline_script_attributes(array('id' => 'kk-grosir-js-before')) === array('id' => 'kk-grosir-js-before'), "$nonExtMode leaves inline attributes untouched");
+}
+
+list($extStyles, $extScripts, $extInline) = $runAssetCase(true, 'external');
+check(isset($extStyles['kk-grosir']) && isset($extScripts['kk-grosir']), 'external mode enqueues core landing assets');
+check(isset($extScripts['kk-grosir-cookiebot']) && $extScripts['kk-grosir-cookiebot'][1] === array('kk-grosir') && $extScripts['kk-grosir-cookiebot'][3] === true, 'external mode enqueues kk-grosir-cookiebot in footer after kk-grosir');
+check(strpos($extInline[0][1] ?? '', '"consentMode":"external"') !== false, 'external mode exposes consentMode=external inline');
+$landingTag = '<script src="/assets/landing.js" id="kk-grosir-js"></script>';
+$bridgeTag = '<script src="/assets/cookiebot-bridge.js" id="kk-grosir-cookiebot-js"></script>';
+$thirdPartyTag = '<script src="https://www.googletagmanager.com/gtag/js" id="google_gtagjs-js"></script>';
+check(kkg_script_loader_tag($landingTag, 'kk-grosir') === '<script data-cookieconsent="ignore" src="/assets/landing.js" id="kk-grosir-js"></script>', 'external adds data-cookieconsent=ignore to kk-grosir');
+check(kkg_script_loader_tag($bridgeTag, 'kk-grosir-cookiebot') === '<script data-cookieconsent="ignore" src="/assets/cookiebot-bridge.js" id="kk-grosir-cookiebot-js"></script>', 'external adds data-cookieconsent=ignore to kk-grosir-cookiebot');
+check(kkg_script_loader_tag('<script data-cookieconsent="necessary" src="/assets/cookiebot-bridge.js"></script>', 'kk-grosir-cookiebot') === '<script data-cookieconsent="necessary" src="/assets/cookiebot-bridge.js"></script>', 'script_loader_tag preserves explicit data-cookieconsent attribute');
+check(kkg_script_loader_tag($thirdPartyTag, 'google_gtagjs') === $thirdPartyTag, 'external never alters third-party Site Kit / PYS / WooCommerce scripts');
+check(kkg_inline_script_attributes(array('id' => 'kk-grosir-js-before')) === array('id' => 'kk-grosir-js-before', 'data-cookieconsent' => 'ignore'), 'external adds data-cookieconsent=ignore to kk-grosir-js-before');
+check(kkg_inline_script_attributes(array('id' => 'woocommerce-inline-js')) === array('id' => 'woocommerce-inline-js'), 'external never alters non-KKG inline scripts');
+unset($GLOBALS['kkg_test_is_page'], $GLOBALS['kkg_test_can_manage'], $GLOBALS['kkg_test_styles'], $GLOBALS['kkg_test_scripts'], $GLOBALS['kkg_test_inline_scripts']);
+
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging');
 echo "PHP domain: $checks checks passed\n";
