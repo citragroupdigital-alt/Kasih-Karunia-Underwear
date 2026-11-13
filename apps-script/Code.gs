@@ -16,9 +16,13 @@ function kkConfig_() {
   var secret = p.getProperty('KK_SYNC_API_SECRET') || '';
   var id = p.getProperty('KK_SPREADSHEET_ID') || '';
   var cursor = Number(p.getProperty('KK_LAST_CHANGE_ID') || 0);
-  if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?\/(?:[a-z0-9_-]+\/)*wp-json\/kk-offline\/v1\/handoffs$/i.test(url)) throw Error('URL API HTTPS tidak valid.');
+  if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?(?:\/[a-z0-9_-]+)*(?:\/wp-json\/kk-offline\/v1\/handoffs|(?:\/(?:index\.php)?)?\?rest_route=\/kk-offline\/v1\/handoffs)$/i.test(url)) throw Error('URL API HTTPS tidak valid.');
   if (secret.length < 32 || !id || !Number.isSafeInteger(cursor) || cursor < 0) throw Error('Script Properties belum lengkap.');
   return { url: url, secret: secret, id: id, cursor: cursor, verified: p.getProperty('KK_IMPORT_RULES_VERIFIED') === 'true' };
+}
+function kkEndpoint_(base, route, query) {
+  var url = base.replace(/\/handoffs$/i, '/' + route);
+  return query ? url + (url.indexOf('?') === -1 ? '?' : '&') + query : url;
 }
 function kkBook_(cfg) {
   var ss = SpreadsheetApp.openById(cfg.id);
@@ -102,7 +106,7 @@ function kkSync_(ss, cfg, started) {
   var existing = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues().filter(function(r) { return r[7] !== ''; }) : [];
   var changes = [];
   for (var page = 0; page < KK.syncMaxPages && Date.now() - started < KK.syncFetchMaxMs; page++) {
-    var res = kkFetch_(cfg, cfg.url + '?after_change_id=' + cursor + '&limit=' + KK.pageLimit);
+    var res = kkFetch_(cfg, kkEndpoint_(cfg.url, 'handoffs', 'after_change_id=' + cursor + '&limit=' + KK.pageLimit));
     var batch = kkValidateBatch_(res, cursor);
     if (!batch.length) break;
     Array.prototype.push.apply(changes, batch);
@@ -224,7 +228,7 @@ function kkReconcile_(ss, cfg, started) {
   for (var offset = 0; offset < requests.length; offset += 100) {
     if (Date.now() - started > KK.maxMs) throw Error('Waktu rekonsiliasi habis; output tetap diblokir.');
     var batch = requests.slice(offset, offset + 100);
-    var response = kkFetch_(cfg, cfg.url.replace(/\/handoffs$/, '/reconcile'), { purchases: batch });
+    var response = kkFetch_(cfg, kkEndpoint_(cfg.url, 'reconcile'), { purchases: batch });
     if (response.data.length !== batch.length) throw Error('Jumlah lookup tidak sesuai.');
     response.data.forEach(function(m) {
       if (!batch.some(function(p) { return p.key === m.key; }) || matches[m.key]) throw Error('Kunci lookup invalid/duplikat.');
@@ -290,7 +294,7 @@ function syncWaLeadsToSheet() {
 }
 function runDiagnostics() {
   var cfg = kkConfig_(), ss = kkBook_(cfg);
-  var response = kkFetch_(cfg, cfg.url + '?after_change_id=' + cfg.cursor + '&limit=1');
+  var response = kkFetch_(cfg, kkEndpoint_(cfg.url, 'handoffs', 'after_change_id=' + cfg.cursor + '&limit=1'));
   kkValidateBatch_(response, cfg.cursor);
   Logger.log('[KK] Kontrak API dan enam tab OK. Cursor=' + cfg.cursor + '. Data pribadi/token tidak dicetak.');
   Logger.log('[KK] Aturan impor diverifikasi=' + cfg.verified + '. Status terakhir: ' + (PropertiesService.getScriptProperties().getProperty('KK_LAST_SUCCESS') || 'belum'));

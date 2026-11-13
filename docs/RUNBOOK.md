@@ -29,10 +29,12 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
 ## 2. Prosedur Instalasi di WordPress Staging
 
 1. **Backup penuh** database MySQL/MariaDB dan direktori `wp-content/` sebelum menyentuh staging/produksi.
-2. Tambahkan konstanta `KKG_SYNC_SECRET` ke `wp-config.php` target (minimal 32 karakter acak yang dibuat khusus di server, jangan disimpan di repo):
-   ```php
-   define('KKG_SYNC_SECRET', 'ganti-dengan-secret-acak-minimal-32-karakter');
-   ```
+2. Konfigurasikan secret sinkronisasi (minimal 32 karakter acak tanpa spasi, dibuat khusus per lingkungan dan jangan pernah disalin antar staging/produksi atau disimpan di repo). Prioritas sumber secret pada plugin:
+   - **Prioritas 1 (utama):** tambahkan konstanta `KKG_SYNC_SECRET` pada `wp-config.php`:
+     ```php
+     define('KKG_SYNC_SECRET', 'ganti-dengan-secret-acak-minimal-32-karakter');
+     ```
+   - **Prioritas 2 (alternatif jika tidak ada akses hosting/`wp-config.php`):** setelah plugin aktif, buka **Settings → KK Grosir**, isi kolom *write-only* **Secret sync Apps Script**, lalu simpan. Secret disimpan terenkripsi (*AES-256-GCM* / *Sodium*, non-autoload) menggunakan key turunan salt `wp-config.php` (`AUTH_KEY`, `SECURE_AUTH_KEY`, dst.) dan tidak pernah ditampilkan ulang. Jika enkripsi PHP atau salt server tidak memenuhi syarat, plugin tetap *fail-closed* (`401`) dan pemasangan lewat `wp-config.php` wajib dibantu admin hosting.
 3. Unggah `deliverables/kk-grosir.zip` melalui **Plugins → Add New → Upload Plugin**, lalu aktifkan **KK Grosir Landing & Offline Attribution**.
 4. Pastikan instalasi tabel berhasil (buka **Settings → KK Grosir**, periksa status `Schema: 1`).
 5. Buat/pilih halaman WordPress dengan slug persis **`grosir`**, isi dengan WPBakery satu modul Text/Shortcode berisi `[kk_grosir]`. Jangan menempelkan CSS/JS tambahan ke WPBakery Raw HTML dan jangan mengedit `functions.php` Jupiter.
@@ -53,7 +55,7 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
    - Tempel isi [apps-script/Code.gs](../apps-script/Code.gs) ke `Code.gs`.
    - Aktifkan tampilan file manifest (`Project Settings → Show "appsscript.json"`), lalu samakan isinya dengan [apps-script/appsscript.json](../apps-script/appsscript.json).
 4. Isi **Project Settings → Script Properties**:
-   - `KK_SYNC_API_URL`: `https://kk-underwear.id/wp-json/kk-offline/v1/handoffs` (atau URL staging HTTPS).
+   - `KK_SYNC_API_URL`: `https://kk-underwear.id/wp-json/kk-offline/v1/handoffs` untuk produksi (atau URL staging target, misal `https://kk-underwear.id/pmnov/wp-json/kk-offline/v1/handoffs` / mode *Plain permalink* `https://kk-underwear.id/pmnov/?rest_route=/kk-offline/v1/handoffs` — jangan pernah mengarahkan staging ke produksi maupun sebaliknya).
    - `KK_SYNC_API_SECRET`: nilai identik dengan `KKG_SYNC_SECRET` di `wp-config.php`.
    - `KK_SPREADSHEET_ID`: ID Google Sheet native.
    - `KK_LAST_CHANGE_ID`: `0`
@@ -113,8 +115,10 @@ Hanya dilakukan setelah pemilik bisnis menyetujui seluruh blocker secara eksplis
 
 1. **Hentikan sinkronisasi Sheets tanpa mengganggu WordPress**:
    - Di Google Sheets, buka **KK Grosir → Stop trigger KK** (atau hapus trigger di Apps Script).
-2. **Rotasi `KKG_SYNC_SECRET` (saat dicurigai bocor atau rotasi berkala)**:
-   - Buat string acak baru (`>= 32` karakter), perbarui `KKG_SYNC_SECRET` di `wp-config.php`, lalu perbarui `KK_SYNC_API_SECRET` di Script Properties Google Apps Script dan uji dengan **Run Diagnostics**.
+2. **Rotasi secret sinkronisasi (saat dicurigai bocor atau rotasi berkala)**:
+   - Buat string acak baru (`32–256` karakter tanpa spasi) secara lokal/server, **jangan kirim ke chat atau Git**.
+   - Bila memakai konstanta server (`Prioritas 1`), perbarui `KKG_SYNC_SECRET` di `wp-config.php`; bila memakai alternatif WP Admin (`Prioritas 2`), isi nilai baru di kolom *write-only* **Settings → KK Grosir** lalu simpan.
+   - Perbarui `KK_SYNC_API_SECRET` di Script Properties proyek Apps Script target agar identik, lalu uji dengan **KK Grosir → Run Diagnostics**.
 3. **Rollback instan landing page / plugin**:
    - Ubah `mode` menjadi `off` di **Settings → KK Grosir** (endpoint langsung menutup dengan `503` dan `/grosir/` berhenti mengambil alih template), lalu nonaktifkan plugin **KK Grosir Landing & Offline Attribution** bila perlu.
    - Pulihkan konten halaman `/grosir/` dari backup jika ingin mengembalikan halaman lama.

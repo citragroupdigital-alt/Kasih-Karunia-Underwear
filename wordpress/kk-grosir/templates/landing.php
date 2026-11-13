@@ -24,9 +24,6 @@ $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
 ?>
 <div class="kkg-root">
 <a href="#kkg-main" class="kkg-skip">Lewati ke konten</a>
-<?php if ($s['mode'] === 'staging'): ?>
-<aside class="kkg-staging" id="kkg-setup">PREVIEW STAGING · Foto, logo, klaim USP dan konfigurasi CS menunggu verifikasi. Belum untuk publikasi.</aside>
-<?php endif; ?>
 <header class="kkg-header" data-section="header">
     <div class="kkg-container kkg-header-inner">
         <a href="#kkg-main" class="kkg-brand" aria-label="KK Underwear, awal halaman"><?php kkg_brand(); ?></a>

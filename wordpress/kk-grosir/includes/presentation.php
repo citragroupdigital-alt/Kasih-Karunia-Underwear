@@ -81,7 +81,7 @@ function kkg_cta($context, $secondary = false) {
     $class = 'kkg-button' . ($secondary ? ' kkg-button-light' : '');
     $icon = kkg_icon('arrow-up-right', 18);
     if (!$url) {
-        echo '<button type="button" class="' . esc_attr($class) . '" disabled aria-describedby="kkg-setup">Minta Katalog Grosir <span class="kkg-btn-icon" aria-hidden="true">' . $icon . '</span></button>';
+        echo '<button type="button" class="' . esc_attr($class) . '" disabled aria-label="Minta Katalog Grosir, nomor WhatsApp CS belum tersedia">Minta Katalog Grosir <span class="kkg-btn-icon" aria-hidden="true">' . $icon . '</span></button>';
     } else {
         echo '<a class="' . esc_attr($class) . '" href="' . esc_url($url) . '" data-kkg-cta="' . esc_attr($context) . '">Minta Katalog Grosir <span class="kkg-btn-icon" aria-hidden="true">' . $icon . '</span></a>';
     }

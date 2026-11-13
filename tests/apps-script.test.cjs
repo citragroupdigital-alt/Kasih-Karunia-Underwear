@@ -761,3 +761,56 @@ test('T03: 550 Closing rows emit 550 Closing scans & 0 Upload scans; Closing flu
     ctx.kkFetch_ = origFetch; ctx.SpreadsheetApp = origSS;
   }
 });
+
+test('R05b: Apps Script validates and builds pretty and ?rest_route= API URLs for /handoffs, /reconcile, and runDiagnostics', () => {
+  const validUrls = [
+    'https://kk-underwear.id/wp-json/kk-offline/v1/handoffs',
+    'https://kk-underwear.id/pmnov/wp-json/kk-offline/v1/handoffs/',
+    'https://kk-underwear.id/pmnov/?rest_route=/kk-offline/v1/handoffs',
+    'https://kk-underwear.id/pmnov/index.php?rest_route=/kk-offline/v1/handoffs',
+    'https://kk-underwear.id/?rest_route=/kk-offline/v1/handoffs',
+  ];
+  const badUrls = [
+    'http://kk-underwear.id/pmnov/?rest_route=/kk-offline/v1/handoffs',
+    'https://kk-underwear.id/pmnov/?rest_route=/wp/v2/posts',
+    'https://kk-underwear.id/pmnov/?rest_route=/kk-offline/v1/handoffs&extra=1',
+    'https://kk-underwear.id/../?rest_route=/kk-offline/v1/handoffs',
+    'https://user:pass@kk-underwear.id/pmnov/wp-json/kk-offline/v1/handoffs',
+  ];
+  const origProps = ctx.PropertiesService, origFetch = ctx.kkFetch_, origBook = ctx.kkBook_, origLogger = ctx.Logger;
+  try {
+    for (const u of validUrls) {
+      ctx.PropertiesService = {
+        getScriptProperties: () => ({
+          getProperty: k => ({ KK_SYNC_API_URL: u, KK_SYNC_API_SECRET: 's'.repeat(32), KK_SPREADSHEET_ID: 'sheet-id', KK_LAST_CHANGE_ID: '0', KK_IMPORT_RULES_VERIFIED: 'false' }[k] || ''),
+        }),
+      };
+      const cfg = ctx.kkConfig_();
+      const isQuery = u.includes('?rest_route=');
+      assert.equal(ctx.kkEndpoint_(cfg.url, 'handoffs', 'after_change_id=5&limit=100').endsWith((isQuery ? '&' : '?') + 'after_change_id=5&limit=100'), true);
+      assert.equal(ctx.kkEndpoint_(cfg.url, 'reconcile').endsWith('/kk-offline/v1/reconcile'), true);
+    }
+    for (const u of badUrls) {
+      ctx.PropertiesService = {
+        getScriptProperties: () => ({
+          getProperty: k => ({ KK_SYNC_API_URL: u, KK_SYNC_API_SECRET: 's'.repeat(32), KK_SPREADSHEET_ID: 'sheet-id', KK_LAST_CHANGE_ID: '0' }[k] || ''),
+        }),
+      };
+      assert.throws(() => ctx.kkConfig_(), /URL API HTTPS tidak valid/);
+    }
+    const fetched = [];
+    ctx.PropertiesService = {
+      getScriptProperties: () => ({
+        getProperty: k => ({ KK_SYNC_API_URL: 'https://kk-underwear.id/pmnov/?rest_route=/kk-offline/v1/handoffs', KK_SYNC_API_SECRET: 's'.repeat(32), KK_SPREADSHEET_ID: 'sheet-id', KK_LAST_CHANGE_ID: '7', KK_IMPORT_RULES_VERIFIED: 'false' }[k] || ''),
+      }),
+    };
+    ctx.kkBook_ = () => ({ getSpreadsheetTimeZone: () => 'Asia/Jakarta' });
+    ctx.Logger = { log() {} };
+    ctx.kkFetch_ = (cfg, url) => { fetched.push(url); return { success: true, data: [], last_change_id: 7, has_more: false }; };
+    const diag = ctx.runDiagnostics();
+    assert.equal(diag.ok, true);
+    assert.deepEqual(fetched, ['https://kk-underwear.id/pmnov/?rest_route=/kk-offline/v1/handoffs&after_change_id=7&limit=1']);
+  } finally {
+    ctx.PropertiesService = origProps; ctx.kkFetch_ = origFetch; ctx.kkBook_ = origBook; ctx.Logger = origLogger;
+  }
+});

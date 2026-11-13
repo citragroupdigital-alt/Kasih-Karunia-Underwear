@@ -239,13 +239,17 @@ function kkg_seo_page_isolation() {
     if (!kkg_is_page()) { return; }
     remove_action('wp_head', 'rel_canonical');
     foreach (array('wpseo_title', 'wpseo_metadesc', 'wpseo_canonical', 'wpseo_robots',
+        'wpseo_locale', 'wpseo_opengraph_type', 'wpseo_opengraph_site_name',
         'wpseo_opengraph_title', 'wpseo_opengraph_desc', 'wpseo_opengraph_url',
         'wpseo_opengraph_image', 'wpseo_twitter_title', 'wpseo_twitter_description', 'wpseo_twitter_image',
         'rank_math/frontend/title', 'rank_math/frontend/description', 'rank_math/frontend/canonical',
         'rank_math/frontend/robots') as $hook) {
         add_filter($hook, '__return_false', 999);
     }
-    add_filter('wpseo_json_ld_output', '__return_empty_array', 999);
-    add_filter('rank_math/json_ld', '__return_empty_array', 999);
+    // Strip Yoast 14+ presenters (og:locale, og:type, og:site_name, Twitter, Schema) on /grosir/ only.
+    foreach (array('wpseo_frontend_presenter_classes', 'wpseo_frontend_presenters',
+        'wpseo_json_ld_output', 'wpseo_schema_graph', 'rank_math/json_ld') as $hook) {
+        add_filter($hook, '__return_empty_array', 999);
+    }
 }
 

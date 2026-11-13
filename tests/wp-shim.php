@@ -8,7 +8,8 @@ if (!defined('KKG_VERSION')) { define('KKG_VERSION', '0.2.5'); }
 define('KKG_LOCAL_PREVIEW', true);
 $GLOBALS['kkg_test_options'] = array('kkg_settings' => array('mode' => 'staging'));
 function get_option($k, $fallback = false) { return $GLOBALS['kkg_test_options'][$k] ?? $fallback; }
-function update_option($k, $v, $autoload = false) { $GLOBALS['kkg_test_options'][$k] = $v; return true; }
+function update_option($k, $v, $autoload = false) { $GLOBALS['kkg_test_options'][$k] = $v; $GLOBALS['kkg_test_autoloads'][$k] = $autoload; return true; }
+function delete_option($k) { unset($GLOBALS['kkg_test_options'][$k], $GLOBALS['kkg_test_autoloads'][$k]); return true; }
 function wp_salt($scheme) { return 'local-test-salt-only-not-for-production'; }
 function wp_json_encode($v, $flags = 0) { return json_encode($v, $flags); }
 function esc_html($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
@@ -26,7 +27,8 @@ function get_permalink($post = 0) {
 function wp_attachment_is_image($id) { return !empty($GLOBALS['kkg_test_attachments'][(int) $id]); }
 function wp_get_attachment_image() { return ''; }
 function wp_get_attachment_image_url($id, $size = 'thumbnail') { return $GLOBALS['kkg_test_attachments'][(int) $id] ?? false; }
-function get_privacy_policy_url() { return ''; }
+function get_privacy_policy_url() { return $GLOBALS['kkg_test_privacy_url'] ?? ''; }
+function get_post_status($id = 0) { return $GLOBALS['kkg_test_post_statuses'][(int) $id] ?? 'publish'; }
 function wp_date($format) { return date($format); }
 function current_user_can($cap) { return $GLOBALS['kkg_test_can_manage'] ?? true; }
 function is_page($id) { return $GLOBALS['kkg_test_is_page'] ?? true; }
@@ -34,4 +36,6 @@ function get_post_field($key, $id) { return $key === 'post_name' ? 'grosir' : '[
 function has_shortcode($content, $tag) { return strpos($content, '['.$tag.']') !== false; }
 function remove_action($hook, $cb, $prio = 10) { $GLOBALS['kkg_test_removed_actions'][] = array($hook, $cb, $prio); return true; }
 function add_filter($hook, $cb, $prio = 10) { $GLOBALS['kkg_test_added_filters'][] = array($hook, $cb, $prio); return true; }
+function __return_false() { return false; }
+function __return_empty_array() { return array(); }
 foreach (array('domain', 'settings', 'presentation', 'seo', 'testimonials') as $file) require_once KKG_DIR . 'includes/' . $file . '.php';

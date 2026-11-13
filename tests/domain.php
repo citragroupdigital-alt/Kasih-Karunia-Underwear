@@ -129,8 +129,47 @@ ob_start();
 kkg_seo_wp_head();
 $headHtml = ob_get_clean();
 check(strpos($headHtml, 'https://example.test/custom-grosir/') !== false, 'wp_head renders canonical on /grosir/');
+foreach (array('og:locale" content="id_ID"', 'og:type" content="website"', 'og:site_name" content="KK Underwear') as $ogTag) {
+    check(substr_count($headHtml, $ogTag) === 1, 'wp_head renders single ' . $ogTag);
+}
 kkg_seo_page_isolation();
 check(!empty($GLOBALS['kkg_test_removed_actions']) && !empty($GLOBALS['kkg_test_added_filters']), 'Isolation hook isolates SEO plugins on /grosir/');
+$registeredFilters = array();
+foreach ($GLOBALS['kkg_test_added_filters'] as $entry) { $registeredFilters[$entry[0]] = $entry[1]; }
+foreach (array('wpseo_frontend_presenter_classes', 'wpseo_frontend_presenters', 'wpseo_json_ld_output', 'wpseo_schema_graph') as $emptyHook) {
+    check(($registeredFilters[$emptyHook] ?? '') === '__return_empty_array' && call_user_func($registeredFilters[$emptyHook], array('Mock_Presenter')) === array(), 'Yoast array hook cleared on /grosir/: ' . $emptyHook);
+}
+foreach (array('wpseo_locale', 'wpseo_opengraph_type', 'wpseo_opengraph_site_name', 'wpseo_opengraph_title') as $falseHook) {
+    check(($registeredFilters[$falseHook] ?? '') === '__return_false' && call_user_func($registeredFilters[$falseHook], 'en_US') === false, 'Yoast scalar OG hook suppressed on /grosir/: ' . $falseHook);
+}
 unset($GLOBALS['kkg_test_permalinks'], $GLOBALS['kkg_test_attachments'], $GLOBALS['kkg_test_is_page'], $GLOBALS['kkg_test_removed_actions'], $GLOBALS['kkg_test_added_filters']);
+// PRIV-01 & PRIV-05: Privacy Policy status/identity guards and premature approval warning.
+$baseActive = array_merge(kkg_settings(), array('mode' => 'active', 'page_id' => 5008, 'phone' => '62895339293140', 'consent_mode' => 'standalone',
+    'privacy_reviewed' => 1, 'claims_reviewed' => 1, 'assets_reviewed' => 1, 'release_reviewed' => 1));
+$GLOBALS['kkg_test_privacy_url'] = '';
+$GLOBALS['kkg_test_options']['wp_page_for_privacy_policy'] = 0;
+check(strpos(implode('|', kkg_release_blockers($baseActive)), 'Privacy Policy belum ditetapkan') !== false, 'Missing privacy policy blocks active mode');
+$GLOBALS['kkg_test_options']['wp_page_for_privacy_policy'] = 5008;
+$GLOBALS['kkg_test_privacy_url'] = 'https://example.test/grosir/';
+check(strpos(implode('|', kkg_release_blockers($baseActive)), 'menunjuk ke halaman /grosir/') !== false, 'Landing page cannot double as Privacy Policy');
+$GLOBALS['kkg_test_options']['wp_page_for_privacy_policy'] = 5010;
+$GLOBALS['kkg_test_post_statuses'][5010] = 'draft';
+check(strpos(implode('|', kkg_release_blockers($baseActive)), 'masih berstatus draft') !== false, 'Draft Privacy Policy blocks active mode');
+$GLOBALS['kkg_test_post_statuses'][5010] = 'publish';
+$GLOBALS['kkg_test_privacy_url'] = 'https://example.test/kebijakan-privasi/';
+check(kkg_release_blockers($baseActive) === array(), 'Published separate Privacy Policy with all approvals clears blockers');
+function wp_nonce_field($a = '') {}
+function admin_url($p = '') { return 'https://example.test/wp-admin/' . $p; }
+function selected($a, $b, $e = true) { return ''; }
+function checked($a, $b, $e = true) { return $a == $b ? 'checked' : ''; }
+function esc_textarea($t) { return esc_html($t); }
+function submit_button($t = 'Save') {}
+$GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging', 'page_id' => 5008, 'privacy_reviewed' => 1, 'release_reviewed' => 1, 'cleanup_enabled' => 1);
+$GLOBALS['kkg_test_post_statuses'][5010] = 'draft';
+ob_start();
+kkg_admin_page();
+$admWarn = ob_get_clean();
+check(strpos($admWarn, 'Peringatan Status Approval (PRIV-01 / PRIV-05)') !== false && strpos($admWarn, 'masih berstatus draft') !== false, 'Admin page shows specific PRIV-01/PRIV-05 warning for premature approval');
+unset($GLOBALS['kkg_test_privacy_url'], $GLOBALS['kkg_test_post_statuses'], $GLOBALS['kkg_test_options']['wp_page_for_privacy_policy']);
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging');
 echo "PHP domain: $checks checks passed\n";

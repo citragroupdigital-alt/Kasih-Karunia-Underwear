@@ -8,7 +8,7 @@ function kkg_api_permission($request, $private = false) {
         return new WP_Error('kk_https', 'HTTPS wajib.', array('status' => 403));
     }
     if ($private) {
-        $secret = defined('KKG_SYNC_SECRET') ? KKG_SYNC_SECRET : '';
+        $secret = kkg_get_sync_secret();
         $header = $request->get_header('authorization');
         if (strlen($secret) < 32 || !hash_equals('Bearer ' . $secret, (string) $header)) {
             return new WP_Error('kk_unauthorized', 'Tidak diizinkan.', array('status' => 401));

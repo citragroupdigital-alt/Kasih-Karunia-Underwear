@@ -26,6 +26,8 @@ const path = require('node:path');
       assert.equal(await page.locator('.kkg-question').count(),8,'all 8 AEO/GEO FAQs rendered');
       assert.equal(await page.locator('.kkg-product [data-kkg-cta]').count(),0,'no CTA inside category cards');
       assert.equal(await page.locator('.kkg-review-note').count(),0,'review note removed');
+      assert.equal(await page.locator('.kkg-staging, #kkg-setup').count(),0,'staging yellow banner removed');
+      assert.equal(await page.locator('.kkg-header').evaluate(el=>Math.abs(el.getBoundingClientRect().top)<=1),true,'no blank strip above header');
       const bodyText=await page.locator('.kkg-root').innerText();
       const rawText=await page.locator('.kkg-root').textContent();
       assert.equal(bodyText.includes('Lima kategori kebutuhan harian'),false,'subtitle removed');
@@ -49,14 +51,26 @@ const path = require('node:path');
         const desc=document.querySelector('meta[name="description"]')?.getAttribute('content')||'';
         const robots=document.querySelector('meta[name="robots"]')?.getAttribute('content')||'';
         const canonical=document.querySelector('link[rel="canonical"]')?.getAttribute('href')||'';
+        const og=prop=>Array.from(document.querySelectorAll(`meta[property="${prop}"]`)).map(m=>m.getAttribute('content')||'');
+        const tw=name=>Array.from(document.querySelectorAll(`meta[name="${name}"]`)).map(m=>m.getAttribute('content')||'');
+        const counts={
+          desc:document.querySelectorAll('meta[name="description"]').length,
+          robots:document.querySelectorAll('meta[name="robots"]').length,
+          canonical:document.querySelectorAll('link[rel="canonical"]').length,
+        };
         const scripts=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map(s=>JSON.parse(s.textContent));
-        return {title,desc,robots,canonical,scripts};
+        return {title,desc,robots,canonical,counts,ogLocale:og('og:locale'),ogType:og('og:type'),ogSiteName:og('og:site_name'),ogTitle:og('og:title'),ogDesc:og('og:description'),ogUrl:og('og:url'),twCard:tw('twitter:card'),scripts};
       });
       assert.match(seoHead.title,/Grosir & Supplier Pakaian Dalam Surabaya/);
       assert.equal(seoHead.desc.length>=120&&seoHead.desc.length<=165,true,'meta description 120-165 chars');
       assert.match(seoHead.robots,/noindex/);
       assert.equal(seoHead.canonical.endsWith('/grosir/'),true,'canonical points to /grosir/');
       assert.equal(seoHead.canonical,'https://example.test/grosir/','preview canonical uses fixture origin');
+      assert.deepEqual(seoHead.counts,{desc:1,robots:1,canonical:1},'single description, robots, canonical tags');
+      assert.deepEqual(seoHead.ogLocale,['id_ID'],'single og:locale=id_ID');
+      assert.deepEqual(seoHead.ogType,['website'],'single og:type=website');
+      assert.deepEqual(seoHead.ogSiteName,['KK Underwear — CV. Kasih Karunia'],'single og:site_name');
+      assert.equal(seoHead.ogTitle.length===1&&seoHead.ogDesc.length===1&&seoHead.ogUrl.length===1&&seoHead.twCard.length===1,true,'single OG/Twitter meta tags');
       assert.equal(seoHead.scripts.length,1,'single JSON-LD block');
       const graph=seoHead.scripts[0]['@graph']||[];
       assert.equal(graph.some(n=>Array.isArray(n['@type'])&&n['@type'].includes('WholesaleStore')&&n.address?.addressLocality==='Surabaya'&&n.logo==='https://example.test/assets/logo-kk.webp'),true,'WholesaleStore schema with fixture logo URL');
@@ -83,7 +97,19 @@ const path = require('node:path');
       assert.equal(testiGrid.headCenterDiff<=2,true,'testimonial heading centered within container at '+width);
       if(width>=1024){assert.equal(testiGrid.cols,3,'3 testimonial columns on desktop');assert.equal(testiGrid.row0Diff<=2&&testiGrid.row0TopDiff<=2,true,'equal card height row on desktop');}
       else if(width>768){assert.equal(testiGrid.cols,2,'2 testimonial columns on tablet '+width);assert.equal(testiGrid.row0Diff<=2&&testiGrid.row0TopDiff<=2,true,'equal card height row on tablet');}
-      else{assert.equal(testiGrid.disp,'flex','testimonials renders flex carousel on mobile '+width);assert.equal(testiGrid.row0Diff<=2,true,'equal card height across mobile carousel '+width);}
+      else{
+        assert.equal(testiGrid.disp,'flex','testimonials renders flex carousel on mobile '+width);assert.equal(testiGrid.row0Diff<=2,true,'equal card height across mobile carousel '+width);
+        const testiMobile=await page.locator('[data-section="testimonials"] .kkg-testimonial-card').first().evaluate(c=>{
+          const p=c.querySelector('.kkg-testimonial-content p');
+          const cs=getComputedStyle(p);
+          const fs=parseFloat(cs.fontSize);
+          const lh=parseFloat(cs.lineHeight)/fs;
+          return {cardH:c.getBoundingClientRect().height,fs,lh};
+        });
+        assert.equal(testiMobile.fs>=14&&testiMobile.fs<=15,true,'testimonial mobile quote font 14-15px at '+width+': '+testiMobile.fs);
+        assert.equal(testiMobile.lh>=1.5&&testiMobile.lh<=1.62,true,'testimonial mobile line-height 1.5-1.6 at '+width+': '+testiMobile.lh.toFixed(2));
+        assert.equal(testiMobile.cardH<=270,true,'compact mobile testimonial card height at '+width+': '+testiMobile.cardH);
+      }
       assert.equal(await page.locator('.kkg-stats strong').allTextContents().then(x=>x.join('|')),'70.000+|2.000+|40.000+');
       assert.equal((await page.locator('#kkg-faq-title').innerText()).replace(/\s+/g,' ').trim(),'Sebelum mulai kulakan.');
       const isMobile=width<=768;
@@ -428,6 +454,18 @@ const path = require('node:path');
       await p.evaluate(()=>window.scrollTo(0,1100));
       await p.waitForFunction(()=>!document.querySelector('[data-kkg-sticky]').hidden);
       assert.equal(await p.locator('[data-kkg-sticky]').isVisible(),true,'sticky shows past Hero on '+width);
+      const stickyMetrics=await p.locator('[data-kkg-sticky]').evaluate(bar=>{
+        const meta=bar.querySelector('.kkg-sticky-meta');
+        const btn=bar.querySelector('.kkg-button');
+        const br=bar.getBoundingClientRect(), mr=meta.getBoundingClientRect(), btr=btn.getBoundingClientRect();
+        return {barH:br.height,barW:br.width,metaW:mr.width,btnW:btr.width,btnH:btr.height,fontSize:parseFloat(getComputedStyle(btn).fontSize),overflowX:document.documentElement.scrollWidth>innerWidth,overlap:mr.right>btr.left};
+      });
+      assert.equal(stickyMetrics.overflowX,false,'no horizontal overflow with sticky bar on '+width);
+      assert.equal(stickyMetrics.overlap,false,'sticky meta and CTA do not overlap on '+width);
+      assert.equal(stickyMetrics.btnH>=44&&stickyMetrics.btnH<=50,true,'sticky CTA keeps >=44px tap target without bulky height on '+width+': '+stickyMetrics.btnH);
+      assert.equal(stickyMetrics.metaW>=100&&stickyMetrics.btnW<stickyMetrics.barW*0.56,true,'sticky CTA balanced vs left copy on '+width+': meta='+stickyMetrics.metaW+' btn='+stickyMetrics.btnW);
+      if(width>=375){assert.equal(stickyMetrics.fontSize>=13&&stickyMetrics.fontSize<=14,true,'sticky CTA font 13-14px on '+width+': '+stickyMetrics.fontSize);}
+      if(width===375){await p.screenshot({path:'artifacts/screenshots/r02-sticky-375.png'});}
       await p.evaluate(()=>window.scrollTo(0,0));
       await p.waitForFunction(()=>document.querySelector('[data-kkg-sticky]').hidden);
       await p.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
