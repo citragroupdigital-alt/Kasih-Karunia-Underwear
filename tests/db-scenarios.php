@@ -49,9 +49,27 @@ verify(kkg_erase_reference($third['reference_code'])===true,'erasure succeeds');
 verify(kkg_lookup_store($third['reference_code'],kkg_utc(time()))['status']==='no_eligible_click','erased code has no click history');
 verify((int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $e WHERE reference_id=%d",$third['id']))===0,'erased events removed');
 verify((int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $r WHERE id=%d AND token_hash=''",$third['id']))===1,'erased code reserved without token');
-$GLOBALS['kkg_test_options']['kkg_settings']=array('mode'=>'staging','privacy_reviewed'=>1,'cleanup_enabled'=>1,'retention_days'=>180);
 $wpdb->query($wpdb->prepare("UPDATE $e SET handoff_at=%s WHERE reference_id=%d",kkg_utc(time()-181*86400),$first['id']));
 $wpdb->query($wpdb->prepare("UPDATE $r SET updated_at=%s WHERE id=%d",kkg_utc(time()-181*86400),$first['id']));
+// Blocked prerequisites must preserve expired attribution rows.
+$GLOBALS['kkg_test_options']['wp_page_for_privacy_policy']=5010;
+$GLOBALS['kkg_test_post_statuses'][5010]='draft';
+$GLOBALS['kkg_test_privacy_url']='https://example.test/kebijakan-privasi/';
+$GLOBALS['kkg_test_options']['kkg_settings']=array('mode'=>'staging','page_id'=>5008,'privacy_reviewed'=>1,'cleanup_enabled'=>1,'retention_days'=>180);
+kkg_cleanup();
+verify(kkg_lookup_store($first['reference_code'],kkg_utc(time()))['status']==='matched','draft privacy blocks cleanup');
+$GLOBALS['kkg_test_post_statuses'][5010]='publish';
+$GLOBALS['kkg_test_options']['wp_page_for_privacy_policy']=5008;
+$GLOBALS['kkg_test_privacy_url']='https://example.test/grosir/';
+kkg_cleanup();
+verify(kkg_lookup_store($first['reference_code'],kkg_utc(time()))['status']==='matched','grosir privacy blocks cleanup');
+$GLOBALS['kkg_test_options']['kkg_settings']['privacy_reviewed']=0;
+$GLOBALS['kkg_test_options']['wp_page_for_privacy_policy']=5010;
+$GLOBALS['kkg_test_privacy_url']='https://example.test/kebijakan-privasi/';
+kkg_cleanup();
+verify(kkg_lookup_store($first['reference_code'],kkg_utc(time()))['status']==='matched','unreviewed privacy blocks cleanup');
+// Complete prerequisites permit retention cleanup of expired rows.
+$GLOBALS['kkg_test_options']['kkg_settings']=array('mode'=>'staging','page_id'=>5008,'privacy_reviewed'=>1,'cleanup_enabled'=>1,'retention_days'=>180);
 kkg_cleanup();
 verify(kkg_lookup_store($first['reference_code'],kkg_utc(time()))['status']==='not_found','retention cleanup');
 verify((int)$wpdb->get_var($wpdb->prepare("SELECT value FROM $s WHERE year=%d",$year))===9999,'cleanup preserves sequence');

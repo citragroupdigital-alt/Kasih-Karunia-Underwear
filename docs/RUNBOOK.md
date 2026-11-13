@@ -18,8 +18,8 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
    # Opsional bila skema/kontrak DB berubah dan target DB tes lokal terverifikasi:
    # node scripts/database-check.cjs
    ```
-2. Hasil paket siap unggah tersedia pada (saat ini **Release Candidate `v0.2.5` untuk uji staging**; arsip rollback `v0.2.4` disimpan di `artifacts/releases/rollback-0.2.4/kk-grosir-0.2.4.zip` beserta manifes hash di `artifacts/releases/rc-0.2.5-manifest.json`):
-   - Plugin WordPress: `deliverables/kk-grosir.zip` (`v0.2.5`)
+2. Hasil paket siap unggah tersedia pada (**Release Candidate `v0.2.6` untuk uji staging `pmnov`**; arsip rollback `v0.2.5` disimpan di `artifacts/releases/rollback-0.2.5/kk-grosir-0.2.5.zip` beserta `artifacts/releases/rollback-0.2.4/kk-grosir-0.2.4.zip` dan manifes hash di `artifacts/releases/rc-0.2.6-manifest.json`):
+   - Plugin WordPress (canonical deliverable & paket RC bernomor versi): `deliverables/kk-grosir.zip` (`v0.2.6`) dan `artifacts/releases/kk-grosir-0.2.6-rc.zip` (hash SHA-256 identik)
    - Workbook template 6 tab: `deliverables/KK_Underwear_Offline_Conversion_Purchase_v1.xlsx` (tidak perlu dibangun ulang selama struktur/style baseline tidak berubah)
    - Apps Script: [apps-script/Code.gs](../apps-script/Code.gs) dan [apps-script/appsscript.json](../apps-script/appsscript.json)
    - Contoh konfigurasi secret: [config/wp-config.example.php](../config/wp-config.example.php)
@@ -29,12 +29,23 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
 ## 2. Prosedur Instalasi di WordPress Staging
 
 1. **Backup penuh** database MySQL/MariaDB dan direktori `wp-content/` sebelum menyentuh staging/produksi.
-2. Konfigurasikan secret sinkronisasi (minimal 32 karakter acak tanpa spasi, dibuat khusus per lingkungan dan jangan pernah disalin antar staging/produksi atau disimpan di repo). Prioritas sumber secret pada plugin:
-   - **Prioritas 1 (utama):** tambahkan konstanta `KKG_SYNC_SECRET` pada `wp-config.php`:
-     ```php
-     define('KKG_SYNC_SECRET', 'ganti-dengan-secret-acak-minimal-32-karakter');
-     ```
-   - **Prioritas 2 (alternatif jika tidak ada akses hosting/`wp-config.php`):** setelah plugin aktif, buka **Settings → KK Grosir**, isi kolom *write-only* **Secret sync Apps Script**, lalu simpan. Secret disimpan terenkripsi (*AES-256-GCM* / *Sodium*, non-autoload) menggunakan key turunan salt `wp-config.php` (`AUTH_KEY`, `SECURE_AUTH_KEY`, dst.) dan tidak pernah ditampilkan ulang. Jika enkripsi PHP atau salt server tidak memenuhi syarat, plugin tetap *fail-closed* (`401`) dan pemasangan lewat `wp-config.php` wajib dibantu admin hosting.
+2. Konfigurasikan **API Secret sinkronisasi** (`32–256` karakter ASCII cetak tanpa spasi atau baris baru, dibuat khusus per lingkungan — **jangan pernah** menyamakan secret staging `pmnov` dan produksi, maupun menuliskan secret asli ke Git, dokumen, log, atau chat). Tersedia dua metode konfigurasi:
+   - **Metode 1 — WordPress Admin (utama bila tidak memiliki akses Hostinger hPanel / `wp-config.php`):**
+     1. **Buat secret acak yang aman** (`32–256` karakter tanpa spasi, contoh menghasilkan secara lokal di PowerShell/terminal admin — bukan menyalin contoh dokumen):
+        ```powershell
+        $b = New-Object byte[] 36; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b) -replace '[+/=]',''
+        ```
+     2. Setelah plugin aktif, buka **Settings → KK Grosir → Secret sync Apps Script (write-only)**, tempel secret tersebut, lalu klik **Save Changes** (dilindungi `manage_options`, nonce CSRF, validasi panjang/karakter, dan rate-limit).
+     3. **Periksa status penyimpanan tanpa menampilkan nilai:** lihat bagian **Status Integrasi** pada halaman yang sama; jika berhasil akan tampil `Secret API: Tersimpan terenkripsi via WP Admin` dan timestamp `Rotasi WP Admin (UTC)` (secret disimpan pada opsi non-autoload `kkg_sync_secret_box` terenkripsi `AES-256-GCM` / `Sodium` memakai key derivasi salt `wp-config.php` dan tidak pernah dicetak ulang ke HTML, JS, REST, maupun log).
+     4. **Pasang di Apps Script:** masukkan nilai secret yang **sama persis** ke properti `KK_SYNC_API_SECRET` di project Google Apps Script target (staging atau produksi masing-masing).
+     5. **Rotasi atau hapus secret:** masukkan secret baru `32–256` karakter di **Secret sync Apps Script (write-only)** lalu simpan (atau centang **Hapus secret yang tersimpan di WP Admin** untuk menghapus opsi), perbarui `KK_SYNC_API_SECRET` pada Apps Script target, lalu uji dengan **KK Grosir → Run Diagnostics**.
+     6. **Bila enkripsi server tidak tersedia:** jika PHP OpenSSL GCM / Sodium atau konstanta salt `wp-config.php` (`AUTH_KEY`, `SECURE_AUTH_KEY`, `AUTH_SALT`, `SECURE_AUTH_SALT`, `LOGGED_IN_KEY`) tidak memadai (`Catatan server` muncul dan simpan menghasilkan error `500`), plugin sengaja tetap *fail-closed* (`401` di API) — serahkan pemasangan secret ke admin hosting menggunakan **Metode 2 (`wp-config.php`)**.
+   - **Metode 2 — `wp-config.php` (alternatif server-level bila memiliki akses file server):**
+     - Tambahkan konstanta `KKG_SYNC_SECRET` pada `wp-config.php` (lihat template [config/wp-config.example.php](../config/wp-config.example.php)):
+       ```php
+       define('KKG_SYNC_SECRET', 'ganti-dengan-secret-acak-minimal-32-karakter');
+       ```
+     - **Prioritas sumber secret (`kkg_get_sync_secret()`):** konstanta `KKG_SYNC_SECRET` di `wp-config.php` **selalu memiliki prioritas lebih tinggi** dan menimpa secret terenkripsi yang disimpan melalui WP Admin (jika konstanta terisi `< 32` karakter, status menjadi `constant_weak` dan API tetap mengunci dengan `401`).
 3. Unggah `deliverables/kk-grosir.zip` melalui **Plugins → Add New → Upload Plugin**, lalu aktifkan **KK Grosir Landing & Offline Attribution**.
 4. Pastikan instalasi tabel berhasil (buka **Settings → KK Grosir**, periksa status `Schema: 1`).
 5. Buat/pilih halaman WordPress dengan slug persis **`grosir`**, isi dengan WPBakery satu modul Text/Shortcode berisi `[kk_grosir]`. Jangan menempelkan CSS/JS tambahan ke WPBakery Raw HTML dan jangan mengedit `functions.php` Jupiter.
@@ -54,12 +65,16 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
 3. Buka **Extensions → Apps Script**:
    - Tempel isi [apps-script/Code.gs](../apps-script/Code.gs) ke `Code.gs`.
    - Aktifkan tampilan file manifest (`Project Settings → Show "appsscript.json"`), lalu samakan isinya dengan [apps-script/appsscript.json](../apps-script/appsscript.json).
-4. Isi **Project Settings → Script Properties**:
-   - `KK_SYNC_API_URL`: `https://kk-underwear.id/wp-json/kk-offline/v1/handoffs` untuk produksi (atau URL staging target, misal `https://kk-underwear.id/pmnov/wp-json/kk-offline/v1/handoffs` / mode *Plain permalink* `https://kk-underwear.id/pmnov/?rest_route=/kk-offline/v1/handoffs` — jangan pernah mengarahkan staging ke produksi maupun sebaliknya).
-   - `KK_SYNC_API_SECRET`: nilai identik dengan `KKG_SYNC_SECRET` di `wp-config.php`.
-   - `KK_SPREADSHEET_ID`: ID Google Sheet native.
-   - `KK_LAST_CHANGE_ID`: `0`
-   - `KK_IMPORT_RULES_VERIFIED`: `false` (ubah ke `true` hanya setelah aturan conversion window & usia klik Google Ads disetujui melalui dokumen terpisah).
+4. Isi **Project Settings → Script Properties** (pada Google Sheets staging `pmnov`, pastikan hanya mengarah ke staging `pmnov`, jangan pernah mengarah ke `/franklin/` maupun produksi live):
+   - `KK_SYNC_API_URL`: endpoint `/handoffs` HTTPS target:
+     - **Staging `pmnov` — Plain Permalinks (kompatibel saat `?rest_route=` aktif):** `https://kk-underwear.id/pmnov/?rest_route=/kk-offline/v1/handoffs`
+     - **Staging `pmnov` — Pretty Permalinks:** `https://kk-underwear.id/pmnov/wp-json/kk-offline/v1/handoffs`
+     - **Produksi (hanya setelah persetujuan rilis):** `https://kk-underwear.id/wp-json/kk-offline/v1/handoffs`
+     - **Mekanisme `kkEndpoint_(base, route, query)` di [Code.gs](../apps-script/Code.gs):** fungsi mengganti akhiran `/handoffs` menjadi `/reconcile` untuk lookup batch `kkReconcile_()` atau tetap `/handoffs` untuk `kkSync_()` dan `runDiagnostics()`. Parameter query pagination (`after_change_id=<cursor>&limit=100` saat sync, `limit=1` saat diagnostics) otomatis disambung memakai `?` pada Pretty Permalinks atau `&` pada Plain Permalinks (`?rest_route=...&after_change_id=...`).
+   - `KK_SYNC_API_SECRET`: secret yang **identik** dengan konfigurasi aktif di WordPress target (dari **Metode 1 WP Admin** atau **Metode 2 `KKG_SYNC_SECRET` di `wp-config.php`**; gunakan secret berbeda antara staging dan produksi).
+   - `KK_SPREADSHEET_ID`: ID Google Sheet native target (masing-masing terpisah untuk staging dan produksi).
+   - `KK_LAST_CHANGE_ID`: `0` (awal mula cursor sinkronisasi; jangan direset sembarang jika sheet sudah berisi data).
+   - `KK_IMPORT_RULES_VERIFIED`: `false` (**wajib tetap `false`** hingga aturan conversion window & usia klik Google Ads disetujui melalui dokumen terpisah; Google Ads offline upload live tidak pernah dijalankan otomatis).
 5. Muat ulang spreadsheet, lalu dari menu **KK Grosir → Run Diagnostics** pastikan log Apps Script menampilkan kontrak API dan 6 tab valid tanpa mencetak secret maupun data pribadi.
 6. **Jika menerapkan pembaruan `Code.gs` ke spreadsheet yang sudah berisi baris `Closing`**, jalankan **KK Grosir → Sync / Retry / Rekonsiliasi** sekali secara manual agar seluruh kolom turunan (`Closing!H:I`, `Closing!L`, dan `Upload!A:P`, termasuk penyatuan pemeriksaan duplikat `Closing!I` → `Upload!B` beserta guard `ISFORMULA`/`IFERROR`) langsung teregenerasi memakai aturan terbaru sebelum mengaktifkan trigger otomatis.
 7. Jalankan **KK Grosir → Pasang trigger 15 menit** (`installKkSyncTrigger`) untuk mengaktifkan sinkronisasi periodik dan invalidasi edit (`kkOnEdit`).
@@ -116,16 +131,16 @@ Hanya dilakukan setelah pemilik bisnis menyetujui seluruh blocker secara eksplis
 1. **Hentikan sinkronisasi Sheets tanpa mengganggu WordPress**:
    - Di Google Sheets, buka **KK Grosir → Stop trigger KK** (atau hapus trigger di Apps Script).
 2. **Rotasi secret sinkronisasi (saat dicurigai bocor atau rotasi berkala)**:
-   - Buat string acak baru (`32–256` karakter tanpa spasi) secara lokal/server, **jangan kirim ke chat atau Git**.
-   - Bila memakai konstanta server (`Prioritas 1`), perbarui `KKG_SYNC_SECRET` di `wp-config.php`; bila memakai alternatif WP Admin (`Prioritas 2`), isi nilai baru di kolom *write-only* **Settings → KK Grosir** lalu simpan.
+   - Buat string acak baru (`32–256` karakter ASCII cetak tanpa spasi) secara lokal/server, **jangan kirim ke chat atau Git**.
+   - **Metode 1 (WP Admin):** isi nilai baru di kolom *write-only* **Settings → KK Grosir → Secret sync Apps Script** lalu klik **Save Changes** (atau gunakan checkbox **Hapus secret yang tersimpan di WP Admin** jika mencabut akses admin-level). **Metode 2 (`wp-config.php` — prioritas lebih tinggi):** perbarui konstanta `KKG_SYNC_SECRET` langsung di `wp-config.php`.
    - Perbarui `KK_SYNC_API_SECRET` di Script Properties proyek Apps Script target agar identik, lalu uji dengan **KK Grosir → Run Diagnostics**.
 3. **Rollback instan landing page / plugin**:
    - Ubah `mode` menjadi `off` di **Settings → KK Grosir** (endpoint langsung menutup dengan `503` dan `/grosir/` berhenti mengambil alih template), lalu nonaktifkan plugin **KK Grosir Landing & Offline Attribution** bila perlu.
    - Pulihkan konten halaman `/grosir/` dari backup jika ingin mengembalikan halaman lama.
    - **Jangan menghapus** tabel `{prefix}kkg_*`, `Klik WA`, `KK_LAST_CHANGE_ID`, maupun data ledger `Closing` saat rollback agar jejak audit dan data transaksi tetap aman.
 4. **Urutan Pembaruan Terkendali & Pemulihan Versi (Plugin + Apps Script)**:
-   - **Langkah pembaruan ke `v0.2.5` + `Code.gs` baru:**
-     1. Ambil **backup penuh** (database MySQL, ZIP plugin sebelumnya mis. `kk-grosir-0.2.4.zip`, salinan Google Sheet, dan nilai `KK_LAST_CHANGE_ID`).
+   - **Langkah pembaruan ke `v0.2.6` + `Code.gs` baru:**
+     1. Ambil **backup penuh** (database MySQL, ZIP plugin sebelumnya mis. `kk-grosir-0.2.5.zip`, salinan Google Sheet, dan nilai `KK_LAST_CHANGE_ID`).
      2. **Hentikan trigger Apps Script** (**KK Grosir → Stop trigger KK**).
      3. **Pasang** versi `Code.gs` dan/atau plugin ZIP yang sudah ditinjau (**Plugins → Add New → Upload Plugin**).
      4. Jalankan **KK Grosir → Run Diagnostics** hingga log memastikan kontrak API dan enam tab OK.
@@ -133,6 +148,6 @@ Hanya dilakukan setelah pemilik bisnis menyetujui seluruh blocker secara eksplis
      6. **Aktifkan kembali trigger** yang diotorisasi (**KK Grosir → Pasang trigger 15 menit**).
    - **Jika pembaruan gagal di salah satu tahap:**
      1. Segera jalankan **KK Grosir → Stop trigger KK**.
-     2. Pulihkan paket plugin versi sebelumnya (`artifacts/releases/rollback-0.2.4/kk-grosir-0.2.4.zip`) dan salinan `Code.gs` sebelumnya secara berpasangan bila terkait.
+     2. Pulihkan paket plugin versi sebelumnya (`artifacts/releases/rollback-0.2.5/kk-grosir-0.2.5.zip`, atau `rollback-0.2.4` bila berasal dari `0.2.4`) dan salinan `Code.gs` sebelumnya secara berpasangan bila terkait.
      3. Jalankan ulang **Run Diagnostics** dan **Sync / Retry / Rekonsiliasi** (*replay* aman tanpa duplikasi baris `Klik WA`) untuk memverifikasi keutuhan data & `KK_LAST_CHANGE_ID` **tanpa mereset ledger transaksi `Closing` atau `KK_LAST_CHANGE_ID` secara sembarang**.
 

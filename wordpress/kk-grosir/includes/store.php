@@ -193,12 +193,13 @@ function kkg_cleanup() {
     $settings = kkg_settings();
     $limits = kkg_table('limits');
     $wpdb->query($wpdb->prepare("DELETE FROM $limits WHERE expires_at<%s", kkg_utc(time())));
-    if (!$settings['privacy_reviewed'] || !$settings['cleanup_enabled']) { return; }
+    if (kkg_cleanup_blocker($settings) !== '') { return; }
+    $retention_days = min(180, max(1, (int) ($settings['retention_days'] ?? 180)));
     try {
-        kkg_transaction(function () use ($wpdb, $settings) {
+        kkg_transaction(function () use ($wpdb, $retention_days) {
             $r = kkg_table('references'); $e = kkg_table('events'); $l = kkg_table('limits');
             $now = kkg_utc(time());
-            $cutoff = kkg_utc(time() - $settings['retention_days'] * 86400);
+            $cutoff = kkg_utc(time() - $retention_days * 86400);
             $last = (int) $wpdb->get_var($wpdb->prepare("SELECT MAX(id) FROM $e WHERE handoff_at<%s", $cutoff));
             kkg_sql($wpdb->prepare("DELETE FROM $e WHERE handoff_at<%s", $cutoff));
             kkg_sql($wpdb->prepare("UPDATE $r SET token_hash='' WHERE expires_at<%s AND token_hash<>''", $now));

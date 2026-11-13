@@ -68,8 +68,8 @@ check(count($ld['@graph'][3]['itemListElement']) === count(kkg_catalog_items()) 
 check(count($ld['@graph'][4]['mainEntity']) === count(kkg_faq_items()) && count(kkg_faq_items()) === 8, 'FAQPage schema matches 8 FAQ items');
 $ldJson = json_encode($ld);
 check(strpos($ldJson, 'Review') === false && strpos($ldJson, 'AggregateRating') === false, 'No Review or AggregateRating schema emitted');
-check(KKG_VERSION === '0.2.5', 'Plugin/asset version bumped to 0.2.5');
-check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.5') !== false, 'Main plugin header version 0.2.5');
+check(KKG_VERSION === '0.2.6', 'Plugin/asset version bumped to 0.2.6');
+check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.6') !== false, 'Main plugin header version 0.2.6');
 check(kkg_visible_testimonials(array('mode' => 'active')) === array(), 'Placeholders hidden on public active mode');
 check(kkg_visible_testimonials(array('mode' => 'off')) === array(), 'Placeholders hidden when mode off');
 $GLOBALS['kkg_test_can_manage'] = false;
@@ -171,5 +171,53 @@ kkg_admin_page();
 $admWarn = ob_get_clean();
 check(strpos($admWarn, 'Peringatan Status Approval (PRIV-01 / PRIV-05)') !== false && strpos($admWarn, 'masih berstatus draft') !== false, 'Admin page shows specific PRIV-01/PRIV-05 warning for premature approval');
 unset($GLOBALS['kkg_test_privacy_url'], $GLOBALS['kkg_test_post_statuses'], $GLOBALS['kkg_test_options']['wp_page_for_privacy_policy']);
+$GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging');
+// Task A: Server-side cleanup guard & execution checks against isolated mock DB.
+if (!defined('DB_NAME')) { define('DB_NAME', 'kkg_tests'); }
+require_once KKG_DIR . 'includes/store.php';
+class KkgMockCleanupWpdb {
+    public $prefix = 'wp_';
+    public $queries = array();
+    public function prepare($sql, ...$args) {
+        $i = 0;
+        return preg_replace_callback('/%[ds]/', function ($m) use (&$i, $args) {
+            $v = $args[$i++];
+            return $m[0] === '%d' ? (string) (int) $v : "'" . addslashes((string) $v) . "'";
+        }, $sql);
+    }
+    public function query($sql) { $this->queries[] = $sql; return 1; }
+    public function get_var($sql) {
+        $this->queries[] = $sql;
+        if (strpos($sql, 'GET_LOCK(') !== false || strpos($sql, 'RELEASE_LOCK(') !== false) { return 1; }
+        if (strpos($sql, 'MAX(id)') !== false) { return 42; }
+        return 0;
+    }
+}
+$GLOBALS['wpdb'] = new KkgMockCleanupWpdb();
+$cleanupCases = array(
+    array('privacy_reviewed=0', array('mode' => 'staging', 'page_id' => 5008, 'privacy_reviewed' => 0, 'cleanup_enabled' => 1), 5010, 'publish', 'https://example.test/kebijakan-privasi/', false),
+    array('cleanup_enabled=0', array('mode' => 'staging', 'page_id' => 5008, 'privacy_reviewed' => 1, 'cleanup_enabled' => 0), 5010, 'publish', 'https://example.test/kebijakan-privasi/', false),
+    array('privacy_unset', array('mode' => 'staging', 'page_id' => 5008, 'privacy_reviewed' => 1, 'cleanup_enabled' => 1), 0, 'publish', '', false),
+    array('privacy_draft', array('mode' => 'staging', 'page_id' => 5008, 'privacy_reviewed' => 1, 'cleanup_enabled' => 1), 5010, 'draft', 'https://example.test/kebijakan-privasi/', false),
+    array('privacy_points_to_grosir_id', array('mode' => 'staging', 'page_id' => 5008, 'privacy_reviewed' => 1, 'cleanup_enabled' => 1), 5008, 'publish', 'https://example.test/grosir/', false),
+    array('privacy_points_to_grosir_slug_with_page_id_0', array('mode' => 'staging', 'page_id' => 0, 'privacy_reviewed' => 1, 'cleanup_enabled' => 1), 5008, 'publish', 'https://example.test/pmnov/grosir/', false),
+    array('all_prerequisites_met', array('mode' => 'active', 'page_id' => 5008, 'privacy_reviewed' => 1, 'cleanup_enabled' => 1, 'retention_days' => 180), 5010, 'publish', 'https://example.test/kebijakan-privasi/', true),
+);
+foreach ($cleanupCases as $case) {
+    list($label, $cfg, $ppId, $ppStatus, $ppUrl, $shouldDelete) = $case;
+    $GLOBALS['wpdb']->queries = array();
+    $GLOBALS['kkg_test_options']['kkg_settings'] = $cfg;
+    $GLOBALS['kkg_test_options']['wp_page_for_privacy_policy'] = $ppId;
+    $GLOBALS['kkg_test_post_statuses'][$ppId] = $ppStatus;
+    $GLOBALS['kkg_test_privacy_url'] = $ppUrl;
+    unset($GLOBALS['kkg_test_options']['kkg_health']);
+    kkg_cleanup();
+    check(empty($GLOBALS['kkg_test_options']['kkg_health']), 'kkg_cleanup ' . $label . ' runs without error');
+    $log = implode("\n", $GLOBALS['wpdb']->queries);
+    $deletedAttribution = strpos($log, 'DELETE FROM wp_kkg_events') !== false || strpos($log, 'DELETE FROM wp_kkg_references') !== false;
+    check($deletedAttribution === $shouldDelete, 'kkg_cleanup ' . $label . ($shouldDelete ? ' runs retention delete' : ' blocks attribution delete'));
+}
+check((int) ($GLOBALS['kkg_test_options']['kkg_retention_cursor'] ?? 0) === 42, 'kkg_cleanup updates retention cursor when prerequisites pass');
+unset($GLOBALS['kkg_test_privacy_url'], $GLOBALS['kkg_test_post_statuses'], $GLOBALS['kkg_test_options']['wp_page_for_privacy_policy'], $GLOBALS['kkg_test_options']['kkg_retention_cursor'], $GLOBALS['wpdb']);
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging');
 echo "PHP domain: $checks checks passed\n";

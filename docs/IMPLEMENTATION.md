@@ -12,7 +12,7 @@ Target: plugin WordPress lokal untuk staging, bukan deployment live. PRD dan AGE
 
 ## Perubahan file
 
-- wordpress/kk-grosir/kk-grosir.php: bootstrap, versi plugin/aset (`0.2.5` / `KKG_VERSION`), pemuatan modul, dan hooks WordPress (kandidat uji staging `deliverables/kk-grosir.zip` v`0.2.5`; arsip rollback `v0.2.4` disimpan di `artifacts/releases/rollback-0.2.4/`).
+- wordpress/kk-grosir/kk-grosir.php: bootstrap, versi plugin/aset (`0.2.6` / `KKG_VERSION`), pemuatan modul, dan hooks WordPress (kandidat uji staging `deliverables/kk-grosir.zip` & `artifacts/releases/kk-grosir-0.2.6-rc.zip` v`0.2.6`; arsip rollback `v0.2.5` disimpan di `artifacts/releases/rollback-0.2.5/`, dan `v0.2.4` di `artifacts/releases/rollback-0.2.4/`).
 - includes/testimonials.php: pemisahan data section Testimoni Mitra (`kkg_testimonials_data`) dari markup template serta gate visibilitas (`kkg_visible_testimonials`) yang menyembunyikan placeholder di mode `active` publik maupun non-admin.
 - includes/settings.php: pengaturan, gate publikasi, konfigurasi aman dan kesehatan integrasi.
 - includes/domain.php: validasi input, kode tahunan, waktu dan pesan WA.

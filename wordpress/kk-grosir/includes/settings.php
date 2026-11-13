@@ -39,10 +39,20 @@ function kkg_privacy_policy_blocker($s) {
             return 'Privacy Policy masih berstatus ' . ($status !== '' ? $status : 'non-publish') . ' (publikasikan & tetapkan di Settings → Privacy setelah disetujui)';
         }
     }
-    if (!get_privacy_policy_url()) {
+    $pp_url = (string) get_privacy_policy_url();
+    if ($pp_id <= 0 || $pp_url === '') {
         return 'Privacy Policy belum ditetapkan atau belum dipublikasikan di Settings → Privacy';
     }
+    if (preg_match('#(?:^|/)grosir/?$#i', (string) parse_url($pp_url, PHP_URL_PATH))) {
+        return 'Privacy Policy menunjuk ke halaman /grosir/ (harus halaman terpisah)';
+    }
     return '';
+}
+
+function kkg_cleanup_blocker($s) {
+    if (empty($s['privacy_reviewed'])) { return 'privacy_reviewed belum aktif'; }
+    if (empty($s['cleanup_enabled'])) { return 'cleanup_enabled belum aktif'; }
+    return kkg_privacy_policy_blocker($s);
 }
 
 function kkg_release_blockers($s) {
@@ -252,8 +262,8 @@ function kkg_admin_page() {
     if (!empty($s['release_reviewed']) && $blockers) {
         $warnings[] = 'release_reviewed dicentang, tetapi blocker rilis lain masih terbuka. Pastikan QA staging, backup/restore, rollback, dan izin eksplisit pemilik benar-benar selesai.';
     }
-    if (!empty($s['cleanup_enabled']) && empty($s['privacy_reviewed'])) {
-        $warnings[] = 'cleanup_enabled aktif, tetapi jadwal WP-Cron kkg_cleanup tetap tidak menghapus data selama privacy_reviewed belum aktif.';
+    if (!empty($s['cleanup_enabled']) && ($cleanup_blocker = kkg_cleanup_blocker($s)) !== '') {
+        $warnings[] = 'cleanup_enabled aktif, tetapi penghapusan data retensi diblokir server (' . $cleanup_blocker . ').';
     }
     if ($warnings) {
         echo '<div class="kkg-admin-alert"><strong>Peringatan Status Approval (PRIV-01 / PRIV-05)</strong><ul>';
@@ -307,7 +317,7 @@ function kkg_admin_page() {
         'claims_reviewed' => array('Empat klaim USP terbukti dan disetujui', 'Jangan centang sebelum empat klaim USP divalidasi pemilik.'),
         'assets_reviewed' => array('Foto asli, logo, dan nomor CS disetujui', 'Jangan centang sebelum aset final dan nomor CS resmi dikonfirmasi.'),
         'release_reviewed' => array('QA, backup/restore, rollback dan rilis disetujui eksplisit', 'Centang hanya setelah QA staging `pmnov`, Google Sheets, backup, rollback, dan persetujuan rilis pemilik selesai.'),
-        'cleanup_enabled' => array('Jalankan cleanup retensi yang disetujui', 'Berjalan terjadwal melalui WP-Cron (kkg_cleanup) hanya bila privacy_reviewed juga aktif; bukan bukti cleanup sudah teruji.'),
+        'cleanup_enabled' => array('Jalankan cleanup retensi yang disetujui', 'Berjalan terjadwal melalui WP-Cron (kkg_cleanup) hanya bila privacy_reviewed aktif dan Privacy Policy terpublikasi (halaman terpisah); bukan bukti cleanup sudah teruji.'),
     ) as $key => $meta) {
         echo '<tr><th>' . esc_html($key) . '</th><td><label><input type="checkbox" name="' . esc_attr($key) . '" value="1" ' . checked($s[$key], 1, false) . '> ' . esc_html($meta[0]) . '</label><p class="description">' . esc_html($meta[1]) . '</p></td></tr>';
     }
