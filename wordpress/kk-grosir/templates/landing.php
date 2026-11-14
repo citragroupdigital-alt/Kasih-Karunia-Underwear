@@ -134,7 +134,7 @@ $total_testimonials = count($testimonials);
             <h2 id="kkg-testimonials-title">Cerita Mitra Kasih Karunia</h2>
             <p class="kkg-testimonials-sub">Pengalaman dan ulasan pelanggan yang telah mempercayakan kebutuhan stok usaha mereka kepada KK Underwear.</p>
         </div>
-        <div class="kkg-carousel kkg-carousel--testimonials" data-kkg-carousel data-carousel-scope="always" data-carousel-autoplay="5500" data-carousel-label="Testimoni Mitra" data-track-label="Daftar testimoni mitra">
+        <div class="kkg-carousel kkg-carousel--testimonials" data-kkg-carousel data-carousel-scope="always" data-carousel-label="Testimoni Mitra" data-track-label="Daftar testimoni mitra">
             <div class="kkg-carousel-controls" data-kkg-carousel-controls hidden>
                 <button type="button" class="kkg-carousel-btn kkg-carousel-btn--prev" data-kkg-carousel-prev aria-label="Testimoni sebelumnya"><?php echo kkg_icon('chevron-left', 20); ?></button>
                 <button type="button" class="kkg-carousel-btn kkg-carousel-btn--next" data-kkg-carousel-next aria-label="Testimoni berikutnya"><?php echo kkg_icon('chevron-right', 20); ?></button>
@@ -149,12 +149,11 @@ $total_testimonials = count($testimonials);
                 <div class="kkg-testimonial-slide" data-kkg-carousel-slide data-slide-label="<?php echo esc_attr(($t_index + 1) . ' dari ' . $total_testimonials); ?>" data-marker-name="<?php echo esc_attr('Pilih testimoni ' . $item['name']); ?>">
                 <article class="kkg-testimonial-card kkg-testimonial-card--split">
                     <div class="kkg-testimonial-copy">
+                        <?php if (empty($item['is_approved_for_publication']) && !empty($item['is_verified'])): ?>
                         <div class="kkg-testimonial-top">
-                            <span class="kkg-testimonial-quote-icon" aria-hidden="true"><?php echo kkg_icon('quote', 18); ?></span>
-                            <?php if (empty($item['is_approved_for_publication']) && !empty($item['is_verified'])): ?>
-                                <span class="kkg-testimonial-stage-badge">Preview Staging · Menunggu Persetujuan</span>
-                            <?php endif; ?>
+                            <span class="kkg-testimonial-stage-badge">Preview Staging · Menunggu Persetujuan</span>
                         </div>
+                        <?php endif; ?>
                         <blockquote class="kkg-testimonial-content">
                             <p>&ldquo;<?php echo esc_html($item['quote']); ?>&rdquo;</p>
                         </blockquote>
@@ -204,11 +203,6 @@ $total_testimonials = count($testimonials);
             <p class="kkg-sr-only" role="status" aria-live="polite" data-kkg-carousel-status></p>
             <div class="kkg-carousel-footer">
                 <nav class="kkg-carousel-markers" aria-label="Pilih testimoni mitra" data-kkg-carousel-markers hidden></nav>
-                <button type="button" class="kkg-carousel-autoplay-btn" data-kkg-carousel-autoplay-toggle aria-label="Jeda putar otomatis testimoni" hidden>
-                    <span data-kkg-autoplay-icon="pause" aria-hidden="true"><?php echo kkg_testimonial_icon('pause'); ?></span>
-                    <span data-kkg-autoplay-icon="play" aria-hidden="true" hidden><?php echo kkg_testimonial_icon('play'); ?></span>
-                    <span data-kkg-autoplay-label>Jeda</span>
-                </button>
             </div>
         </div>
         <script type="application/json" data-kkg-proof-data><?php echo wp_json_encode($kkg_lightbox_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
@@ -229,7 +223,7 @@ $total_testimonials = count($testimonials);
     <div class="kkg-container kkg-center">
         <p class="kkg-eyebrow">UNTUK PEMILIK TOKO, AGEN &amp; DISTRIBUTOR</p>
         <h2 id="kkg-final-title">Siap Memenuhi Kebutuhan Stok Usaha Anda?</h2>
-        <p>Siap memenuhi kebutuhan stok toko atau usaha Anda? Mulai pemesanan grosir dari 50 lusin. Hubungi tim KK Underwear untuk mendapatkan katalog dan informasi harga. Untuk kebutuhan pembelian 100 lusin atau lebih, konsultasikan jumlah dan pilihan produk dengan tim kami.</p>
+        <p>Pesan grosir pakaian dalam mulai 50 lusin hingga 100 lusin atau lebih. Hubungi CS untuk katalog dan informasi harga.</p>
         <div class="kkg-final-cta"><?php kkg_cta('final_cta', true); ?></div>
         <p class="kkg-support">Melayani Pengiriman Seluruh Indonesia</p>
         <?php $kkg_consent_mode = kkg_consent_mode($s); $kkg_privacy_url = get_privacy_policy_url(); ?>

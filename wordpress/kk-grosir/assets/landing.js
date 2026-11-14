@@ -33,14 +33,9 @@
       toastTimer = setTimeout(() => { status.hidden = true; status.textContent = ''; }, 4500);
     }
   }
-  const carouselSyncCallbacks = [];
-  function syncAutoplayAll() {
-    carouselSyncCallbacks.forEach(fn => fn());
-  }
   function syncOverlays() {
     root.classList.toggle('kkg-has-banner', !banner.hidden);
     const anyDialogOpen = Boolean(root.querySelector('dialog[open]'));
-    syncAutoplayAll();
     if (!stickyBar) return;
     const show = heroPassed && visibleGuards.size === 0 && banner.hidden && !anyDialogOpen && !externalDialogOpen;
     stickyBar.hidden = !show;
@@ -227,14 +222,9 @@
     const nextBtn = carousel.querySelector('[data-kkg-carousel-next]');
     const markersNav = carousel.querySelector('[data-kkg-carousel-markers]');
     const statusEl = carousel.querySelector('[data-kkg-carousel-status]');
-    const autoplayBtn = carousel.querySelector('[data-kkg-carousel-autoplay-toggle]');
-    const autoplayLabel = autoplayBtn ? autoplayBtn.querySelector('[data-kkg-autoplay-label]') : null;
-    const pauseIcon = autoplayBtn ? autoplayBtn.querySelector('[data-kkg-autoplay-icon="pause"]') : null;
-    const playIcon = autoplayBtn ? autoplayBtn.querySelector('[data-kkg-autoplay-icon="play"]') : null;
     const slides = track ? Array.from(track.querySelectorAll('[data-kkg-carousel-slide]')) : [];
     const total = slides.length;
     const alwaysActive = carousel.dataset.carouselScope === 'always';
-    const autoplayMs = Math.max(0, Number(carousel.dataset.carouselAutoplay) || 0);
     const supportsLoop = total >= 3 && supportsCssSibling;
     const earlyPark = total >= 4 ? 1 : 0;
     let active = false;
@@ -246,13 +236,6 @@
     let settleTimer = null;
     let unlockA = 0;
     let unlockB = 0;
-    let autoplayTimer = 0;
-    let pointerResumeTimer = 0;
-    let userPaused = reduceMq.matches;
-    let isHovered = false;
-    let isFocusInside = false;
-    let isPointerPaused = false;
-    let isInView = !('IntersectionObserver' in window);
     let markers = [];
 
     function clampOffset(slide) {
@@ -280,40 +263,6 @@
         if (i === idx) markers[i].setAttribute('aria-current', 'true');
         else markers[i].removeAttribute('aria-current');
       }
-    }
-
-    function updateAutoplayButton() {
-      if (!autoplayBtn) return;
-      const showControl = active && autoplayMs > 0 && total >= 2 && !reduceMq.matches;
-      autoplayBtn.hidden = !showControl;
-      if (!showControl) return;
-      autoplayBtn.setAttribute('aria-label', userPaused ? 'Putar otomatis testimoni' : 'Jeda putar otomatis testimoni');
-      if (autoplayLabel) autoplayLabel.textContent = userPaused ? 'Putar' : 'Jeda';
-      if (pauseIcon) pauseIcon.hidden = userPaused;
-      if (playIcon) playIcon.hidden = !userPaused;
-    }
-
-    function syncAutoplay() {
-      clearTimeout(autoplayTimer);
-      autoplayTimer = 0;
-      updateAutoplayButton();
-      const anyDialogOpen = Boolean(root.querySelector('dialog[open]'));
-      if (anyDialogOpen) {
-        clearTimeout(pointerResumeTimer);
-        isPointerPaused = false;
-      }
-      const shouldRun = active && autoplayMs > 0 && total >= 2 && !reduceMq.matches &&
-        !userPaused && !isHovered && !isFocusInside && !isPointerPaused &&
-        isInView && !document.hidden && !anyDialogOpen;
-      if (autoplayMs > 0) carousel.dataset.autoplayState = shouldRun ? 'running' : 'paused';
-      if (!shouldRun) return;
-      autoplayTimer = setTimeout(() => {
-        autoplayTimer = 0;
-        if (!active) return;
-        const base = pendingTarget !== null ? pendingTarget : nearestSlide();
-        const nextIdx = supportsLoop ? base + 1 : (base + 1) % total;
-        goToSlide(nextIdx);
-      }, autoplayMs);
     }
 
     function applySettled(idx, announce) {
@@ -362,7 +311,6 @@
       if (pendingTarget !== null && Math.abs(track.scrollLeft - pendingDest) > 12) return;
       pendingTarget = null;
       applySettled(nearestSlide(), true);
-      syncAutoplay();
     }
 
     function goToSlide(idx) {
@@ -381,11 +329,9 @@
       if (Math.abs(dest - track.scrollLeft) <= 1) {
         pendingTarget = null;
         applySettled(targetIdx, false);
-        syncAutoplay();
         return;
       }
       track.scrollTo({ left: dest, behavior: reduceMq.matches ? 'auto' : 'smooth' });
-      syncAutoplay();
     }
 
     function onScroll() {
@@ -402,17 +348,8 @@
       }
     }
 
-    function cancelPending(e) {
+    function cancelPending() {
       pendingTarget = null;
-      if (autoplayMs > 0 && !(e && e.target && e.target.closest && e.target.closest('[data-kkg-lightbox-open]'))) {
-        isPointerPaused = true;
-        clearTimeout(pointerResumeTimer);
-        pointerResumeTimer = setTimeout(() => {
-          isPointerPaused = false;
-          syncAutoplay();
-        }, 2500);
-        syncAutoplay();
-      }
     }
 
     function buildMarkers() {
@@ -452,25 +389,20 @@
       track.scrollTo({ left: clampOffset(slides[0]), behavior: 'instant' });
       updateMarker(0);
       if (statusEl) statusEl.textContent = '';
-      syncAutoplay();
     }
 
     function disableCarousel() {
       if (!active) return;
       active = false;
       pendingTarget = null;
-      clearTimeout(autoplayTimer);
-      clearTimeout(pointerResumeTimer);
       cancelAnimationFrame(rafId);
       cancelAnimationFrame(unlockA);
       cancelAnimationFrame(unlockB);
       clearTimeout(settleTimer);
       rafId = 0;
-      autoplayTimer = 0;
       carousel.removeAttribute('role');
       carousel.removeAttribute('aria-roledescription');
       carousel.removeAttribute('aria-label');
-      carousel.removeAttribute('data-autoplay-state');
       track.removeAttribute('tabindex');
       track.removeAttribute('role');
       track.removeAttribute('aria-label');
@@ -485,7 +417,6 @@
       });
       if (controls) controls.hidden = true;
       if (markersNav) markersNav.hidden = true;
-      if (autoplayBtn) autoplayBtn.hidden = true;
       if (statusEl) statusEl.textContent = '';
     }
 
@@ -502,11 +433,6 @@
       const base = pendingTarget !== null ? pendingTarget : nearestSlide();
       goToSlide(base + 1);
     });
-    if (autoplayBtn) autoplayBtn.addEventListener('click', () => {
-      if (reduceMq.matches) return;
-      userPaused = !userPaused;
-      syncAutoplay();
-    });
     if (track) {
       track.addEventListener('scroll', onScroll, { passive: true });
       if (supportsScrollEnd) track.addEventListener('scrollend', onSettle);
@@ -514,16 +440,7 @@
       track.addEventListener('touchstart', cancelPending, { passive: true });
       track.addEventListener('wheel', cancelPending, { passive: true });
     }
-    if (autoplayMs > 0) {
-      carousel.addEventListener('mouseenter', () => { isHovered = true; syncAutoplay(); });
-      carousel.addEventListener('mouseleave', () => { isHovered = false; syncAutoplay(); });
-      carousel.addEventListener('focusin', () => { isFocusInside = true; syncAutoplay(); });
-      carousel.addEventListener('focusout', e => {
-        if (!e.relatedTarget || !carousel.contains(e.relatedTarget)) {
-          isFocusInside = false;
-          syncAutoplay();
-        }
-      });
+    if (alwaysActive) {
       carousel.addEventListener('keydown', e => {
         if (!active || total < 2 || root.querySelector('dialog[open]')) return;
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -532,21 +449,6 @@
         const base = pendingTarget !== null ? pendingTarget : nearestSlide();
         goToSlide(e.key === 'ArrowRight' ? base + 1 : base - 1);
       });
-      carouselSyncCallbacks.push(syncAutoplay);
-      document.addEventListener('visibilitychange', syncAutoplay);
-      if ('IntersectionObserver' in window) {
-        const r = carousel.getBoundingClientRect();
-        isInView = r.bottom > 0 && r.top < window.innerHeight;
-        const viewObserver = new IntersectionObserver(entries => {
-          const entry = entries[entries.length - 1];
-          isInView = entry.isIntersecting;
-          syncAutoplay();
-        }, { threshold: 0.2 });
-        viewObserver.observe(carousel);
-      }
-      if (typeof reduceMq.addEventListener === 'function') {
-        reduceMq.addEventListener('change', () => { if (reduceMq.matches) userPaused = true; syncAutoplay(); });
-      }
     }
     if (!alwaysActive) {
       if (typeof mobileMq.addEventListener === 'function') {

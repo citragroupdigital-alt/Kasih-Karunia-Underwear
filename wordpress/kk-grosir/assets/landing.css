@@ -535,15 +535,13 @@
 }
 
 .kkg-carousel-controls[hidden],
-.kkg-carousel-markers[hidden],
-.kkg-carousel-autoplay-btn[hidden] {
+.kkg-carousel-markers[hidden] {
     display: none !important
 }
 
 @media(min-width:769px) {
     .kkg-carousel:not(.kkg-carousel--testimonials) .kkg-carousel-controls,
-    .kkg-carousel:not(.kkg-carousel--testimonials) .kkg-carousel-markers,
-    .kkg-carousel:not(.kkg-carousel--testimonials) .kkg-carousel-autoplay-btn {
+    .kkg-carousel:not(.kkg-carousel--testimonials) .kkg-carousel-markers {
         display: none !important
     }
 }
@@ -815,21 +813,9 @@
 .kkg-testimonial-top {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     flex-wrap: wrap;
     gap: 10px
-}
-
-.kkg-testimonial-quote-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: inline-grid;
-    place-items: center;
-    background: #eff5ff;
-    border: 1px solid #dbe7fe;
-    color: var(--kkg-blue);
-    flex-shrink: 0
 }
 
 .kkg-testimonial-stage-badge {
@@ -1097,46 +1083,6 @@
 .kkg-carousel--testimonials .kkg-carousel-dot[aria-current="true"]::before {
     width: 22px;
     background: var(--kkg-blue)
-}
-
-.kkg-carousel-autoplay-btn {
-    min-height: 40px;
-    padding: 6px 14px;
-    border-radius: 999px;
-    border: 1px solid var(--kkg-line);
-    background: #fff;
-    color: var(--kkg-ink);
-    font-size: .8125rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: 0 1px 2px rgba(21, 27, 51, .04);
-    cursor: pointer;
-    touch-action: manipulation;
-    transition: border-color .15s, color .15s, background-color .15s
-}
-
-.kkg-carousel-autoplay-btn .kkg-svg {
-    width: 14px;
-    height: 14px;
-    display: block;
-    flex-shrink: 0
-}
-
-[data-kkg-autoplay-icon] {
-    display: inline-flex;
-    align-items: center
-}
-
-[data-kkg-autoplay-icon][hidden] {
-    display: none !important
-}
-
-.kkg-carousel-autoplay-btn:hover,
-.kkg-carousel-autoplay-btn:focus-visible {
-    border-color: var(--kkg-blue);
-    color: var(--kkg-blue)
 }
 
 @supports ((order: sibling-index()) and (order: sibling-count())) {

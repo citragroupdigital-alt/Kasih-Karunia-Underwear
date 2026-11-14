@@ -96,7 +96,12 @@ const path = require('node:path');
       assert.deepEqual(await page.locator('[data-section="testimonials"] .kkg-testimonial-meta h3').allTextContents(),['Bunda Lusi — CV. Anindiya','Bunda Hidayati','Pak Irfan — Algo Jaya'],'3 approved testimonial partner names rendered (Pak Aan excluded)');
       assert.equal(rawText.includes('Pak Aan'),false,'removed Pak Aan testimonial absent');
       assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-badge').count(),0,'old CONTOH TESTIMONI badge absent');
+      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-quote-icon').count(),0,'testimonial quote icon removed');
+      assert.equal(await page.locator('[data-section="testimonials"] [data-kkg-carousel-autoplay-toggle]').count(),0,'Jeda/autoplay button removed');
+      assert.equal(await page.locator('#testimoni [data-kkg-carousel]').getAttribute('data-carousel-autoplay'),null,'carousel autoplay disabled cleanly');
       assert.equal(await page.locator('[data-section="testimonials"] #kkg-testimonials-title').innerText(),'Cerita Mitra Kasih Karunia','updated testimonials H2 rendered');
+      const finalCopy=await page.locator('[data-section="final"] .kkg-container > p:not(.kkg-eyebrow):not(.kkg-support)').innerText();
+      assert.equal(finalCopy,'Pesan grosir pakaian dalam mulai 50 lusin hingga 100 lusin atau lebih. Hubungi CS untuk katalog dan informasi harga.','shortened SEO Final CTA paragraph rendered');
       assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonials-sub').innerText(),'Pengalaman dan ulasan pelanggan yang telah mempercayakan kebutuhan stok usaha mereka kepada KK Underwear.','updated testimonials subheading rendered');
       assert.equal(rawText.includes('CONTOH TESTIMONI'),false,'CONTOH TESTIMONI text absent');
       assert.equal(await page.locator('[data-section="testimonials"] [data-kkg-cta]').count(),0,'no CTA buttons inside testimonials');
@@ -176,7 +181,6 @@ const path = require('node:path');
       assert.equal(await page.locator('#produk [data-kkg-carousel-markers]').isVisible(),isMobile,'#produk carousel markers visibility at '+width);
       assert.equal(await page.locator('#testimoni [data-kkg-carousel-controls]').isVisible(),true,'#testimoni carousel controls visible on desktop and mobile at '+width);
       assert.equal(await page.locator('#testimoni [data-kkg-carousel-markers]').isVisible(),true,'#testimoni carousel markers visible on desktop and mobile at '+width);
-      assert.equal(await page.locator('#testimoni [data-kkg-carousel-autoplay-toggle]').isVisible(),true,'#testimoni autoplay Pause/Play button visible at '+width);
       if(!isMobile){
         const heroImgs=await page.evaluate(()=>Array.from(document.querySelectorAll('.kkg-hero-photo')).map(el=>({ok:el.complete&&el.naturalWidth===1200&&el.naturalHeight===1200})));
         assert.equal(heroImgs.length,1,'hero photo rendered');
@@ -352,7 +356,6 @@ const path = require('node:path');
       const lb=p.locator('[data-kkg-lightbox]');
       assert.equal(await lb.evaluate(d=>d.open),true,'lightbox dialog opens natively via showModal at '+width);
       assert.equal(await p.evaluate(()=>document.body.style.overflow),'','document.body.style.overflow left empty (CSS overscroll-behavior used)');
-      assert.equal(await p.locator('#testimoni [data-kkg-carousel]').evaluate(el=>el.dataset.autoplayState),'paused','autoplay pauses while lightbox open');
       if(width===375){
         await p.evaluate(()=>window.scrollTo(0,1100));
         assert.equal(await p.locator('[data-kkg-sticky]').isVisible(),false,'mobile sticky bar stays hidden while lightbox dialog open');
@@ -389,55 +392,18 @@ const path = require('node:path');
       assert.equal(await lb.evaluate(d=>d.open),false,'close button closes lightbox');
       await ctx.close();
     }
-    // Simulated approved carousel clock-verified autoplay & WCAG 2.2.2 pause/resume suite
-    {
-      const aCtx=await browser.newContext({viewport:{width:1280,height:800}});
-      const ap=await aCtx.newPage();ap.on('pageerror',e=>errors.push(e.message));
-      await ap.clock.install();
-      await ap.goto('http://127.0.0.1:4173/?mode=active&testimonials=simulated');
-      const car=ap.locator('#testimoni [data-kkg-carousel]');
-      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','autoplay stays paused while #testimoni is off-screen');
-      await car.scrollIntoViewIfNeeded();
-      await ap.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel]')?.dataset.autoplayState==='running');
-      await car.hover();
-      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','hover pauses autoplay');
-      await ap.mouse.move(5,5);
-      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'running','mouse leave resumes autoplay');
-      await ap.clock.runFor(5650);
-      await ap.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot:nth-child(2)')?.getAttribute('aria-current')==='true');
-      const autoBtn=ap.locator('#testimoni [data-kkg-carousel-autoplay-toggle]');
-      assert.equal(await autoBtn.getAttribute('aria-pressed'),null,'Pause/Play toggle omits redundant aria-pressed');
-      await autoBtn.click();
-      assert.equal(await autoBtn.innerText(),'Putar','Pause click toggles label to Putar');
-      await ap.clock.runFor(6000);
-      assert.equal(await ap.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').nth(1).getAttribute('aria-current'),'true','paused carousel does not auto-advance after 6s');
-      await autoBtn.click();
-      assert.equal(await autoBtn.innerText(),'Jeda','Play click resumes autoplay');
-      await ap.mouse.move(5,5);
-      await ap.locator('#testimoni [data-kkg-carousel-next]').focus();
-      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','focus inside carousel pauses autoplay');
-      await ap.evaluate(()=>document.activeElement.blur());
-      await ap.locator('#testimoni [data-kkg-carousel-slide]').nth(1).locator('[data-kkg-lightbox-open]').click();
-      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','opening lightbox pauses autoplay');
-      await ap.keyboard.press('Escape');
-      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','autoplay stays paused while opener retains focus after Escape');
-      await ap.evaluate(()=>document.activeElement.blur());
-      await ap.mouse.move(5,5);
-      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'running','autoplay resumes once pointer & focus leave after closing lightbox');
-      await aCtx.close();
+    // Verify manual testimonial carousel never auto-advances without user interaction (desktop & reducedMotion)
+    for(const reducedMotion of ['no-preference','reduce']){
+      const mCtx=await browser.newContext({viewport:{width:1280,height:800},reducedMotion});
+      const mp=await mCtx.newPage();mp.on('pageerror',e=>errors.push(e.message));
+      await mp.clock.install();
+      await mp.goto('http://127.0.0.1:4173/?mode=active');
+      await mp.locator('#testimoni').scrollIntoViewIfNeeded();
+      await mp.clock.runFor(6500);
+      assert.equal(await mp.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').first().getAttribute('aria-current'),'true','manual carousel stays on slide 1 after 6.5s ('+reducedMotion+')');
+      await mCtx.close();
     }
-    {
-      const rCtx=await browser.newContext({viewport:{width:1280,height:800},reducedMotion:'reduce'});
-      const rp=await rCtx.newPage();rp.on('pageerror',e=>errors.push(e.message));
-      await rp.clock.install();
-      await rp.goto('http://127.0.0.1:4173/?mode=active&testimonials=simulated');
-      assert.equal(await rp.locator('#testimoni [data-kkg-carousel-autoplay-toggle]').isVisible(),false,'reduced motion hides autoplay control');
-      assert.equal(await rp.locator('#testimoni [data-kkg-carousel]').evaluate(el=>el.dataset.autoplayState),'paused','reduced motion keeps autoplay paused');
-      await rp.clock.runFor(6500);
-      assert.equal(await rp.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').first().getAttribute('aria-current'),'true','reduced motion stays on slide 1 after 6.5s');
-      await rCtx.close();
-    }
-    results.push({testimonialRedesign:'verified split layout, carousel looping/swipe/keyboard, 5500ms autoplay + pause/reducedMotion, multi-image native <dialog> lightbox, focus restore, and zero body.style.overflow mutation on desktop & mobile'});
+    results.push({testimonialRedesign:'verified split layout without quote icon or Jeda badge, manual carousel looping/swipe/keyboard, multi-image native <dialog> lightbox, shortened SEO Final CTA, focus restore, and zero body.style.overflow mutation on desktop & mobile'});
     const htmlCache={};
     async function getModeHtml(consentMode){
       if(!htmlCache[consentMode])htmlCache[consentMode]=await (await fetch('http://127.0.0.1:4173/?consent='+encodeURIComponent(consentMode))).text();

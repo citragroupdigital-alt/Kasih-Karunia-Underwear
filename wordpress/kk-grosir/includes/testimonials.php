@@ -185,8 +185,6 @@ function kkg_visible_testimonials($s = null, $override_items = null) {
 function kkg_testimonial_icon($name, $size = 16) {
     $icons = array(
         'zoom-in' => '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6"/><path d="M8 11h6"/>',
-        'pause' => '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>',
-        'play' => '<polygon points="6 3 20 12 6 21 6 3"/>',
     );
     if (!isset($icons[$name])) {
         return '';

@@ -71,8 +71,8 @@ check(count($ld['@graph'][3]['itemListElement']) === count(kkg_catalog_items()) 
 check(count($ld['@graph'][4]['mainEntity']) === count(kkg_faq_items()) && count(kkg_faq_items()) === 9, 'FAQPage schema matches 9 FAQ items');
 $ldJson = json_encode($ld);
 check(strpos($ldJson, 'Review') === false && strpos($ldJson, 'AggregateRating') === false, 'No Review or AggregateRating schema emitted');
-check(KKG_VERSION === '0.2.11', 'Plugin/asset version bumped to 0.2.11');
-check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.11') !== false, 'Main plugin header version 0.2.11');
+check(KKG_VERSION === '0.2.12', 'Plugin/asset version bumped to 0.2.12');
+check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.12') !== false, 'Main plugin header version 0.2.12');
 check(kkg_visible_testimonials(array('mode' => 'active'), array()) === array(), 'Empty dataset returns zero items');
 check(kkg_visible_testimonials(array('mode' => 'staging'), array()) === array(), 'Empty dataset returns zero items in staging too');
 check(kkg_testimonial_asset_url('../secrets.webp') === '', 'Path traversal rejected in testimonial asset helper');
@@ -151,7 +151,8 @@ check(strpos($stagingHtml, 'CONTOH TESTIMONI') === false && strpos($stagingHtml,
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'active', 'phone' => '62895339293140');
 $activePublicHtml = kkg_render();
 check(strpos($activePublicHtml, 'data-section="testimonials"') !== false && strpos($activePublicHtml, 'data-kkg-lightbox') !== false, 'Public active mode renders approved testimonials and lightbox');
-check(strpos($activePublicHtml, 'kkg-testimonial-stage-badge') === false && strpos($activePublicHtml, 'Pak Aan') === false && strpos($activePublicHtml, 'Pak Agus') === false, 'Public active HTML omits staging badge, Pak Aan, and placeholders');
+check(strpos($activePublicHtml, 'kkg-testimonial-stage-badge') === false && strpos($activePublicHtml, 'kkg-testimonial-quote-icon') === false && strpos($activePublicHtml, 'data-kkg-carousel-autoplay-toggle') === false && strpos($activePublicHtml, 'data-carousel-autoplay') === false && strpos($activePublicHtml, 'Pak Aan') === false && strpos($activePublicHtml, 'Pak Agus') === false, 'Public active HTML omits staging badge, quote icon, Jeda/autoplay control, Pak Aan, and placeholders');
+check(strpos($activePublicHtml, 'Pesan grosir pakaian dalam mulai 50 lusin hingga 100 lusin atau lebih. Hubungi CS untuk katalog dan informasi harga.') !== false, 'Shortened SEO Final CTA paragraph rendered cleanly');
 check(strpos($activePublicHtml, 'Bunda Lusi') !== false && strpos($activePublicHtml, 'Bunda Hidayati') !== false && strpos($activePublicHtml, 'Algo Jaya') !== false, 'Public active HTML includes exact 3 approved testimonials');
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging', 'phone' => '62895339293140');
 $allSeoAndBodyText = strtolower($stagingHtml . "\n" . $ldJson . "\n" . kkg_seo_description() . "\n" . kkg_seo_title_text());
