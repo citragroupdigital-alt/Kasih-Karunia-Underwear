@@ -1304,6 +1304,263 @@
     border-color: rgba(255, 255, 255, .5)
 }
 
+.kkg-lightbox.kkg-lightbox--wide {
+    width: min(860px, calc(100vw - 24px))
+}
+
+.kkg-lightbox--wide .kkg-lightbox-stage {
+    padding: 12px 60px
+}
+
+.kkg-lightbox--wide .kkg-lightbox-figure {
+    max-height: 60dvh;
+    background: #fff;
+    border-radius: 10px
+}
+
+.kkg-lightbox--wide .kkg-lightbox-figure img {
+    max-height: 60dvh
+}
+
+.kkg-lightbox-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap
+}
+
+.kkg-lightbox-tools[hidden],
+.kkg-lightbox-counter[hidden] {
+    display: none !important
+}
+
+.kkg-lightbox-counter {
+    font-size: .8125rem;
+    font-weight: 600;
+    color: #cbd5e1
+}
+
+.kkg-lightbox-zoom-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .24);
+    background: rgba(30, 41, 59, .9);
+    color: #f8fafc;
+    font-size: .8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .15s, border-color .15s
+}
+
+.kkg-lightbox-zoom-btn:hover,
+.kkg-lightbox-zoom-btn:focus-visible,
+.kkg-lightbox-zoom-btn[aria-pressed="true"] {
+    background: var(--kkg-blue);
+    border-color: var(--kkg-sky);
+    color: #fff
+}
+
+.kkg-lightbox-figure.is-zoomed {
+    display: block;
+    overflow: auto;
+    max-height: 62dvh;
+    cursor: zoom-out
+}
+
+.kkg-lightbox-figure.is-zoomed img {
+    max-width: none;
+    max-height: none;
+    width: min(1240px, 165%);
+    height: auto;
+    margin: 0 auto
+}
+
+.kkg-invoices {
+    background: #fff
+}
+
+.kkg-invoices-head {
+    max-width: 680px;
+    margin: 0 auto 38px
+}
+
+.kkg-invoices-sub {
+    margin: 14px auto 0;
+    color: var(--kkg-muted);
+    font-size: 1rem;
+    line-height: 1.6
+}
+
+.kkg-invoices-grid {
+    display: grid;
+    gap: 24px;
+    align-items: stretch
+}
+
+.kkg-invoices-grid--1 {
+    grid-template-columns: minmax(0, 520px);
+    justify-content: center
+}
+
+.kkg-invoices-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 920px;
+    margin: 0 auto
+}
+
+.kkg-invoices-grid--multi {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+}
+
+.kkg-invoice-slide {
+    min-width: 0;
+    display: flex
+}
+
+.kkg-invoice-card {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(21, 27, 51, .06);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease
+}
+
+.kkg-invoice-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 32px rgba(21, 27, 51, .1);
+    border-color: #cbd5e1
+}
+
+.kkg-invoice-preview {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+    cursor: pointer;
+    text-align: left
+}
+
+.kkg-invoice-preview:focus-visible {
+    outline: 3px solid var(--kkg-blue);
+    outline-offset: -3px
+}
+
+.kkg-invoice-frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    max-height: 250px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .06)
+}
+
+.kkg-invoice-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain
+}
+
+.kkg-invoice-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    padding: 18px 20px 20px;
+    gap: 12px
+}
+
+.kkg-invoice-stage-row {
+    display: flex;
+    align-items: center
+}
+
+.kkg-root .kkg-invoice-title {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--kkg-ink)
+}
+
+.kkg-invoice-meta {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0
+}
+
+.kkg-invoice-meta>div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: .875rem;
+    line-height: 1.45
+}
+
+.kkg-invoice-meta dt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #475569;
+    font-weight: 600;
+    flex-shrink: 0
+}
+
+.kkg-invoice-meta dd {
+    margin: 0;
+    color: var(--kkg-ink);
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere
+}
+
+.kkg-invoice-detail-btn {
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: var(--kkg-blue);
+    font-size: .875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color .15s, border-color .15s, color .15s
+}
+
+.kkg-invoice-detail-btn:hover,
+.kkg-invoice-detail-btn:focus-visible {
+    background: #eff6ff;
+    border-color: var(--kkg-blue)
+}
+
 .kkg-faq-grid {
     display: grid;
     grid-template-columns: 1fr 1.6fr;
@@ -1744,6 +2001,12 @@
     }
 }
 
+@media(max-width:1023px) {
+    .kkg-invoices-grid--multi {
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+    }
+}
+
 @media(max-width:900px) {
     .kkg-testimonial-card--split {
         padding: 28px 34px;
@@ -2157,6 +2420,62 @@
         margin-top: 10px
     }
 
+    .kkg-carousel--invoices {
+        display: flex;
+        flex-direction: column
+    }
+
+    .kkg-carousel--invoices .kkg-invoices-grid {
+        order: 1;
+        display: flex;
+        grid-template-columns: none;
+        max-width: none;
+        margin: 0;
+        gap: 0;
+        padding: 4px 0 8px
+    }
+
+    .kkg-carousel--invoices .kkg-invoices-grid::before,
+    .kkg-carousel--invoices .kkg-invoices-grid::after {
+        content: none;
+        display: none
+    }
+
+    .kkg-carousel--invoices .kkg-invoices-grid>[data-kkg-carousel-slide] {
+        flex: 0 0 100%;
+        scroll-snap-align: center;
+        padding-inline: 0
+    }
+
+    .kkg-carousel--invoices .kkg-invoice-frame {
+        max-height: 210px
+    }
+
+    .kkg-carousel--invoices .kkg-carousel-controls {
+        position: static;
+        transform: none;
+        inset-inline: auto;
+        order: 2;
+        display: flex;
+        justify-content: center;
+        gap: 14px;
+        margin-top: 12px;
+        pointer-events: auto
+    }
+
+    .kkg-carousel--invoices .kkg-carousel-controls[hidden] {
+        display: none
+    }
+
+    .kkg-carousel--invoices .kkg-carousel-footer {
+        order: 3;
+        margin-top: 10px
+    }
+
+    .kkg-lightbox--wide .kkg-lightbox-stage {
+        padding: 8px
+    }
+
     .kkg-carousel-btn {
         width: 44px;
         height: 44px;
@@ -2335,9 +2654,34 @@
     .kkg-lightbox-surface {
         padding: 16px
     }
+
+    .kkg-invoices-head {
+        margin-bottom: 28px
+    }
+
+    .kkg-invoice-preview {
+        padding: 10px
+    }
+
+    .kkg-invoice-body {
+        padding: 14px 16px 16px
+    }
+
+    .kkg-lightbox-figure.is-zoomed img {
+        width: 195%
+    }
 }
 
 @media(max-width:359px) {
+    .kkg-invoice-meta>div {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px
+    }
+
+    .kkg-invoice-meta dd {
+        text-align: left
+    }
     .kkg-sticky-bar {
         padding-inline: 12px;
         gap: 8px

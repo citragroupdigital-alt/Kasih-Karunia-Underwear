@@ -11,15 +11,16 @@ const server = http.createServer((req, res) => {
     try {
       const modeArg = reqUrl.searchParams.get('mode') === 'active' ? 'active' : 'staging';
       const consentArg = ['standalone', 'external'].includes(reqUrl.searchParams.get('consent')) ? reqUrl.searchParams.get('consent') : 'disabled';
-      const fixtureArg = ['simulated', 'empty', 'unapproved'].includes(reqUrl.searchParams.get('testimonials')) ? reqUrl.searchParams.get('testimonials') : '';
-      const args = [path.join(__dirname, 'render-preview.php'), modeArg, consentArg];
-      if (fixtureArg) args.push(fixtureArg);
+      const fixtureArg = ['simulated', 'empty', 'unapproved'].includes(reqUrl.searchParams.get('testimonials')) ? reqUrl.searchParams.get('testimonials') : 'default';
+      const invoiceArg = ['1', '2', '3', '4', 'empty', 'unapproved', 'missing_image'].includes(reqUrl.searchParams.get('invoices')) ? reqUrl.searchParams.get('invoices') : '';
+      const args = [path.join(__dirname, 'render-preview.php'), modeArg, consentArg, fixtureArg];
+      if (invoiceArg) args.push(invoiceArg);
       const html = execFileSync(php, args, { encoding: 'utf8' });
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(html);
     } catch (_) { res.writeHead(500); res.end('PHP preview failed'); }
   } else if (
     ['/assets/landing.css', '/assets/landing.js', '/assets/cookiebot-bridge.js', '/assets/logo-kk.webp', '/assets/hero-kk.webp', '/assets/about-gudang-kk.webp', '/assets/category-0-bra-wanita.webp', '/assets/category-1-cd-pria.webp', '/assets/category-2-cd-wanita.webp', '/assets/category-3-kaos-kaki.webp', '/assets/category-4-handuk.webp', '/assets/inter-latin-wght-normal.woff2'].includes(reqUrl.pathname) ||
-    /^\/assets\/testimonials\/[a-z0-9\-]+\.webp$/.test(reqUrl.pathname)
+    /^\/assets\/(?:testimonials|invoices)\/[a-z0-9\-]+\.webp$/.test(reqUrl.pathname)
   ) {
     const type = reqUrl.pathname.endsWith('.css') ? 'text/css' : reqUrl.pathname.endsWith('.webp') ? 'image/webp' : reqUrl.pathname.endsWith('.woff2') ? 'font/woff2' : 'text/javascript';
     res.writeHead(200, { 'Content-Type': type });

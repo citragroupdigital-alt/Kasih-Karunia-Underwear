@@ -71,8 +71,8 @@ check(count($ld['@graph'][3]['itemListElement']) === count(kkg_catalog_items()) 
 check(count($ld['@graph'][4]['mainEntity']) === count(kkg_faq_items()) && count(kkg_faq_items()) === 9, 'FAQPage schema matches 9 FAQ items');
 $ldJson = json_encode($ld);
 check(strpos($ldJson, 'Review') === false && strpos($ldJson, 'AggregateRating') === false, 'No Review or AggregateRating schema emitted');
-check(KKG_VERSION === '0.2.12', 'Plugin/asset version bumped to 0.2.12');
-check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.12') !== false, 'Main plugin header version 0.2.12');
+check(KKG_VERSION === '0.2.13', 'Plugin/asset version bumped to 0.2.13');
+check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.13') !== false, 'Main plugin header version 0.2.13');
 check(kkg_visible_testimonials(array('mode' => 'active'), array()) === array(), 'Empty dataset returns zero items');
 check(kkg_visible_testimonials(array('mode' => 'staging'), array()) === array(), 'Empty dataset returns zero items in staging too');
 check(kkg_testimonial_asset_url('../secrets.webp') === '', 'Path traversal rejected in testimonial asset helper');
@@ -141,16 +141,19 @@ $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging', 'phone
 $stagingHtml = kkg_render();
 $posOrder = strpos($stagingHtml, 'data-section="order"');
 $posTesti = strpos($stagingHtml, 'data-section="testimonials"');
+$posInvoices = strpos($stagingHtml, 'data-section="invoices"');
 $posFaq = strpos($stagingHtml, 'data-section="faq"');
-check($posOrder !== false && $posTesti !== false && $posFaq !== false && $posOrder < $posTesti && $posTesti < $posFaq, 'Testimonials placed between Order and FAQ');
+check($posOrder !== false && $posTesti !== false && $posInvoices !== false && $posFaq !== false && $posOrder < $posTesti && $posTesti < $posInvoices && $posInvoices < $posFaq, 'Testimonials and staging invoices placed in order between Order and FAQ');
+check(strpos($stagingHtml, 'Bukti Transaksi Grosir Nyata') !== false && strpos($stagingHtml, 'data-kkg-invoice-data') !== false, 'Invoice section headline and isolated JSON payload rendered in staging');
 check(strpos($stagingHtml, 'Cerita Mitra Kasih Karunia') !== false, 'Exact owner-requested testimonial headline rendered');
 check(strpos($stagingHtml, 'data-kkg-lightbox') !== false && strpos($stagingHtml, 'closedby="any"') !== false && strpos($stagingHtml, 'data-kkg-proof-data') !== false, 'Lightbox dialog and proof JSON rendered');
 check(strpos($stagingHtml, 'CONTOH TESTIMONI') === false && strpos($stagingHtml, 'Pak Agus') === false && strpos($stagingHtml, 'Pak Aan') === false, 'Old placeholders and removed Pak Aan absent from staging HTML');
 
-// Verify public active mode renders the 3 approved testimonials cleanly without staging badge or removed Pak Aan.
+// Verify public active mode renders the 3 approved testimonials and 3 approved invoices cleanly without staging badge or removed Pak Aan.
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'active', 'phone' => '62895339293140');
 $activePublicHtml = kkg_render();
-check(strpos($activePublicHtml, 'data-section="testimonials"') !== false && strpos($activePublicHtml, 'data-kkg-lightbox') !== false, 'Public active mode renders approved testimonials and lightbox');
+check(strpos($activePublicHtml, 'data-section="testimonials"') !== false && strpos($activePublicHtml, 'data-section="invoices"') !== false && strpos($activePublicHtml, 'data-kkg-invoice-data') !== false && strpos($activePublicHtml, 'data-kkg-lightbox') !== false, 'Public active mode renders approved testimonials, approved invoices, and shared lightbox');
+check(strpos($activePublicHtml, '29 Oktober 2026') !== false && strpos($activePublicHtml, '22 Oktober 2026') !== false && strpos($activePublicHtml, '1 Oktober 2026') !== false, 'Public active mode renders all 3 approved invoice dates');
 check(strpos($activePublicHtml, 'kkg-testimonial-stage-badge') === false && strpos($activePublicHtml, 'kkg-testimonial-quote-icon') === false && strpos($activePublicHtml, 'data-kkg-carousel-autoplay-toggle') === false && strpos($activePublicHtml, 'data-carousel-autoplay') === false && strpos($activePublicHtml, 'Pak Aan') === false && strpos($activePublicHtml, 'Pak Agus') === false, 'Public active HTML omits staging badge, quote icon, Jeda/autoplay control, Pak Aan, and placeholders');
 check(strpos($activePublicHtml, 'Pesan grosir pakaian dalam mulai 50 lusin hingga 100 lusin atau lebih. Hubungi CS untuk katalog dan informasi harga.') !== false, 'Shortened SEO Final CTA paragraph rendered cleanly');
 check(strpos($activePublicHtml, 'Bunda Lusi') !== false && strpos($activePublicHtml, 'Bunda Hidayati') !== false && strpos($activePublicHtml, 'Algo Jaya') !== false, 'Public active HTML includes exact 3 approved testimonials');
@@ -350,6 +353,45 @@ check(kkg_script_loader_tag($thirdPartyTag, 'google_gtagjs') === $thirdPartyTag,
 check(kkg_inline_script_attributes(array('id' => 'kk-grosir-js-before')) === array('id' => 'kk-grosir-js-before', 'data-cookieconsent' => 'ignore'), 'external adds data-cookieconsent=ignore to kk-grosir-js-before');
 check(kkg_inline_script_attributes(array('id' => 'woocommerce-inline-js')) === array('id' => 'woocommerce-inline-js'), 'external never alters non-KKG inline scripts');
 unset($GLOBALS['kkg_test_is_page'], $GLOBALS['kkg_test_can_manage'], $GLOBALS['kkg_test_styles'], $GLOBALS['kkg_test_scripts'], $GLOBALS['kkg_test_inline_scripts']);
+
+// Invoice proof module tests: asset validation, date formatting, approval/staging gating, independent rendering, zero PII leakage.
+foreach (array('assets/invoices/../logo-kk.webp', 'assets/invoices/invoice-01.png', 'assets/invoices/missing.webp', '/etc/passwd') as $badAsset) {
+    check(kkg_invoice_asset_url($badAsset) === '', 'Invalid invoice asset path rejected: ' . $badAsset);
+}
+foreach (array('assets/invoices/invoice-01.webp', 'assets/invoices/invoice-02.webp', 'assets/invoices/invoice-03.webp') as $goodAsset) {
+    check(kkg_invoice_asset_url($goodAsset) !== '', 'Bundled redacted invoice WebP resolves: ' . $goodAsset);
+}
+check(kkg_invoice_format_date('2026-10-29') === '29 Oktober 2026' && kkg_invoice_format_date('2026-02-30') === '' && kkg_invoice_format_date('29-10-2026') === '', 'Invoice date formatter validates calendar dates');
+check(count(kkg_invoices_data()) === 3, 'Three approved invoice records registered');
+check(count(kkg_visible_invoices(array('mode' => 'active'))) === 3, 'Three approved invoices render publicly in active mode');
+$unapprovedInvoiceOnly = array(
+    array('id' => 'inv-pending', 'date' => '2026-10-15', 'category' => 'Bra Wanita', 'image' => 'assets/invoices/invoice-01.webp', 'is_verified' => true, 'is_approved_for_publication' => false, 'is_placeholder' => false),
+);
+check(kkg_visible_invoices(array('mode' => 'active'), $unapprovedInvoiceOnly) === array(), 'Unapproved invoices never render in active mode');
+$GLOBALS['kkg_test_can_manage'] = false;
+check(kkg_visible_invoices(array('mode' => 'staging'), $unapprovedInvoiceOnly) === array(), 'Non-admin cannot view unapproved invoice candidates in staging');
+$GLOBALS['kkg_test_can_manage'] = true;
+check(count(kkg_visible_invoices(array('mode' => 'staging'), $unapprovedInvoiceOnly)) === 1, 'Admin sees unapproved verified invoice candidates in staging');
+$invoiceFilterOverride = array(
+    array('id' => 'inv-ok', 'date' => '2026-10-15', 'category' => 'Bra Wanita', 'image' => 'assets/invoices/invoice-01.webp', 'is_verified' => true, 'is_approved_for_publication' => true, 'is_placeholder' => false),
+    array('id' => 'inv-unapproved', 'date' => '2026-10-16', 'category' => 'Kaum', 'image' => 'assets/invoices/invoice-02.webp', 'is_verified' => true, 'is_approved_for_publication' => false, 'is_placeholder' => false),
+    array('id' => 'inv-placeholder', 'date' => '2026-10-17', 'category' => 'Handuk', 'image' => 'assets/invoices/invoice-03.webp', 'is_verified' => true, 'is_approved_for_publication' => true, 'is_placeholder' => true),
+    array('id' => 'inv-missing', 'date' => '2026-10-18', 'category' => 'Kaos Kaki', 'image' => 'assets/invoices/nonexistent.webp', 'is_verified' => true, 'is_approved_for_publication' => true, 'is_placeholder' => false),
+);
+$activeInv = kkg_visible_invoices(array('mode' => 'active'), $invoiceFilterOverride);
+check(count($activeInv) === 1 && $activeInv[0]['id'] === 'inv-ok' && $activeInv[0]['date_label'] === '15 Oktober 2026', 'Active invoice filter admits only verified approved non-placeholder records with existing WebP');
+// Independent rendering when testimonials is empty & invoices has approved data
+$GLOBALS['kkg_test_filter_callbacks']['kkg_testimonials_items'][] = static function () { return array(); };
+$GLOBALS['kkg_test_filter_callbacks']['kkg_invoices_items'][] = static function () use ($invoiceFilterOverride) { return $invoiceFilterOverride; };
+$GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'active', 'phone' => '62895339293140');
+$independentHtml = kkg_render();
+check(strpos($independentHtml, 'data-section="testimonials"') === false && strpos($independentHtml, 'data-kkg-proof-data') === false, 'Empty testimonials omits testimonial section and proof JSON');
+check(strpos($independentHtml, 'data-section="invoices"') !== false && strpos($independentHtml, 'data-kkg-invoice-data') !== false && strpos($independentHtml, 'data-kkg-lightbox') !== false, 'Invoices section and lightbox render independently even when testimonials is empty');
+check(strpos($independentHtml, 'kkg-invoices-grid--1') !== false, 'Single approved invoice receives centered single-card grid class');
+foreach (array('031-5476283', '085.100', 'ADELIA', '010-2111590', '010-8899983', 'FADILMAN', 'DINA NUR', 'RATNA', '7.086.285', '21.522.250', '6.510.000', 'JN/KK-') as $sensitiveText) {
+    check(stripos($stagingHtml . "\n" . $independentHtml, $sensitiveText) === false, 'No sensitive raw invoice PII/amount leaked into HTML: ' . $sensitiveText);
+}
+unset($GLOBALS['kkg_test_filter_callbacks']['kkg_testimonials_items'], $GLOBALS['kkg_test_filter_callbacks']['kkg_invoices_items'], $GLOBALS['kkg_test_can_manage']);
 
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging');
 echo "PHP domain: $checks checks passed\n";

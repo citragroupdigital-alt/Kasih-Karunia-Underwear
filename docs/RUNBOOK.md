@@ -18,8 +18,8 @@ Panduan ini mencakup instalasi staging, pengoperasian harian Admin & CS, verifik
    # Opsional bila skema/kontrak DB berubah dan target DB tes lokal terverifikasi:
    # node scripts/database-check.cjs
    ```
-2. Hasil paket siap unggah tersedia pada (**paket terbaru `v0.2.12` — pembersihan ikon petik & kontrol Jeda/autoplay testimoni, Final CTA ringkas SEO, 3 testimoni WhatsApp tersensor `"Cerita Mitra Kasih Karunia"`, Meta Description 144 karakter, Technical SEO, MOQ Grosir 50 Lusin, dan Cookiebot Consent Bridge**; arsip sebelumnya `v0.2.6` di `artifacts/releases/kk-grosir-0.2.6-rc.zip`, `v0.2.5` di `artifacts/releases/rollback-0.2.5/kk-grosir-0.2.5.zip`, serta `v0.2.4` di `artifacts/releases/rollback-0.2.4/kk-grosir-0.2.4.zip`):
-   - Plugin WordPress (canonical deliverable terbaru `v0.2.12`): `deliverables/kk-grosir.zip` (`v0.2.12`)
+2. Hasil paket siap unggah tersedia pada (**paket terbaru `v0.2.13` — penambahan section independen `"Bukti Transaksi Grosir Nyata"` dengan 3 faktur penjualan tersensor disetujui pemilik & lightbox berfitur zoom, pembersihan ikon petik & kontrol Jeda/autoplay testimoni, Final CTA ringkas SEO, 3 testimoni WhatsApp tersensor `"Cerita Mitra Kasih Karunia"`, Meta Description 144 karakter, Technical SEO, MOQ Grosir 50 Lusin, dan Cookiebot Consent Bridge**; arsip sebelumnya `v0.2.6` di `artifacts/releases/kk-grosir-0.2.6-rc.zip`, `v0.2.5` di `artifacts/releases/rollback-0.2.5/kk-grosir-0.2.5.zip`, serta `v0.2.4` di `artifacts/releases/rollback-0.2.4/kk-grosir-0.2.4.zip`):
+   - Plugin WordPress (canonical deliverable terbaru `v0.2.13`): `deliverables/kk-grosir.zip` (`v0.2.13`)
    - Workbook template 6 tab: `deliverables/KK_Underwear_Offline_Conversion_Purchase_v1.xlsx` (tidak perlu dibangun ulang selama struktur/style baseline tidak berubah)
    - Apps Script: [apps-script/Code.gs](../apps-script/Code.gs) dan [apps-script/appsscript.json](../apps-script/appsscript.json)
    - Contoh konfigurasi secret: [config/wp-config.example.php](../config/wp-config.example.php)
@@ -139,7 +139,7 @@ Hanya dilakukan setelah pemilik bisnis menyetujui seluruh blocker secara eksplis
    - Pulihkan konten halaman `/grosir/` dari backup jika ingin mengembalikan halaman lama.
    - **Jangan menghapus** tabel `{prefix}kkg_*`, `Klik WA`, `KK_LAST_CHANGE_ID`, maupun data ledger `Closing` saat rollback agar jejak audit dan data transaksi tetap aman.
 4. **Urutan Pembaruan Terkendali & Pemulihan Versi (Plugin + Apps Script)**:
-   - **Langkah pembaruan ke `v0.2.12` + `Code.gs` baru:**
+   - **Langkah pembaruan ke `v0.2.13` + `Code.gs` baru:**
      1. Ambil **backup penuh** (database MySQL, ZIP plugin sebelumnya mis. `kk-grosir-0.2.6-rc.zip` / `kk-grosir-0.2.5.zip`, salinan Google Sheet, dan nilai `KK_LAST_CHANGE_ID`).
      2. **Hentikan trigger Apps Script** (**KK Grosir → Stop trigger KK**).
      3. **Pasang** versi `Code.gs` dan/atau plugin ZIP yang sudah ditinjau (**Plugins → Add New → Upload Plugin**).

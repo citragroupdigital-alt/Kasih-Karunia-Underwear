@@ -460,31 +460,58 @@
     syncCarouselMode();
   }
 
-  function initTestimonialLightbox() {
+  function initProofLightbox() {
     const lightbox = root.querySelector('[data-kkg-lightbox]');
-    const proofScript = root.querySelector('[data-kkg-proof-data]');
-    if (!lightbox || !proofScript) return;
-    let proofItems = [];
-    try {
-      proofItems = JSON.parse(proofScript.textContent || '[]');
-    } catch (_) {
-      return;
-    }
-    if (!Array.isArray(proofItems) || !proofItems.length) return;
+    if (!lightbox) return;
 
+    function readJson(selector) {
+      const el = root.querySelector(selector);
+      if (!el) return [];
+      try {
+        const parsed = JSON.parse(el.textContent || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    const proofItems = readJson('[data-kkg-proof-data]');
+    const invoiceItems = readJson('[data-kkg-invoice-data]');
+    if (!proofItems.length && !invoiceItems.length) return;
+
+    const badgeEl = lightbox.querySelector('[data-kkg-lightbox-badge]');
     const nameEl = lightbox.querySelector('[data-kkg-lightbox-name]');
     const metaEl = lightbox.querySelector('[data-kkg-lightbox-meta]');
+    const toolsEl = lightbox.querySelector('[data-kkg-lightbox-tools]');
+    const counterEl = lightbox.querySelector('[data-kkg-lightbox-counter]');
+    const zoomBtn = lightbox.querySelector('[data-kkg-lightbox-zoom]');
+    const zoomLabelEl = lightbox.querySelector('[data-kkg-lightbox-zoom-label]');
     const figureEl = lightbox.querySelector('[data-kkg-lightbox-figure]');
     const prevImgBtn = lightbox.querySelector('[data-kkg-lightbox-prev]');
     const nextImgBtn = lightbox.querySelector('[data-kkg-lightbox-next]');
     const pagesEl = lightbox.querySelector('[data-kkg-lightbox-pages]');
     const closeBtn = lightbox.querySelector('[data-kkg-lightbox-close]');
-    let currentItem = null;
-    let currentImageIdx = 0;
+    const dismissEl = lightbox.querySelector('[data-kkg-lightbox-dismiss]');
 
-    function renderProofImage() {
-      const images = currentItem && Array.isArray(currentItem.images) ? currentItem.images : [];
-      const imgData = images[currentImageIdx];
+    let activeKind = null;
+    let currentItem = null;
+    let currentIdx = 0;
+    let isZoomed = false;
+
+    function setZoom(nextZoom) {
+      isZoomed = !!nextZoom && activeKind === 'invoice';
+      if (figureEl) {
+        figureEl.classList.toggle('is-zoomed', isZoomed);
+        if (!isZoomed) {
+          figureEl.scrollTop = 0;
+          figureEl.scrollLeft = 0;
+        }
+      }
+      if (zoomBtn) zoomBtn.setAttribute('aria-pressed', isZoomed ? 'true' : 'false');
+      if (zoomLabelEl) zoomLabelEl.textContent = isZoomed ? 'Ukuran Normal' : 'Perbesar Faktur';
+    }
+
+    function ensureImgEl(imgData) {
       if (!imgData || !figureEl) return;
       let imgEl = figureEl.querySelector('img');
       if (!imgEl) {
@@ -493,45 +520,116 @@
         imgEl.decoding = 'async';
         figureEl.appendChild(imgEl);
       }
-      imgEl.src = imgData.url;
+      imgEl.src = imgData.url || '';
       imgEl.alt = imgData.alt || '';
       if (imgData.width) imgEl.width = Number(imgData.width);
+      else imgEl.removeAttribute('width');
       if (imgData.height) imgEl.height = Number(imgData.height);
+      else imgEl.removeAttribute('height');
+    }
 
-      const multi = images.length > 1;
+    function renderPager(total, labelPrefix, selectedIdx, onSelect) {
+      const multi = total > 1;
       if (prevImgBtn) prevImgBtn.hidden = !multi;
       if (nextImgBtn) nextImgBtn.hidden = !multi;
-      if (pagesEl) {
-        pagesEl.hidden = !multi;
-        pagesEl.textContent = '';
-        if (multi) {
-          images.forEach((_, idx) => {
-            const pBtn = document.createElement('button');
-            pBtn.type = 'button';
-            pBtn.className = 'kkg-lightbox-page-btn';
-            pBtn.textContent = 'Halaman ' + (idx + 1);
-            if (idx === currentImageIdx) pBtn.setAttribute('aria-current', 'true');
-            pBtn.addEventListener('click', () => {
-              currentImageIdx = idx;
-              renderProofImage();
-            });
-            pagesEl.appendChild(pBtn);
-          });
-        }
+      if (!pagesEl) return;
+      pagesEl.hidden = !multi;
+      pagesEl.textContent = '';
+      if (!multi) return;
+      for (let i = 0; i < total; i += 1) {
+        const pBtn = document.createElement('button');
+        pBtn.type = 'button';
+        pBtn.className = 'kkg-lightbox-page-btn';
+        pBtn.textContent = labelPrefix + ' ' + (i + 1);
+        if (i === selectedIdx) pBtn.setAttribute('aria-current', 'true');
+        pBtn.addEventListener('click', () => onSelect(i));
+        pagesEl.appendChild(pBtn);
       }
+    }
+
+    function renderProofImage() {
+      const images = currentItem && Array.isArray(currentItem.images) ? currentItem.images : [];
+      const imgData = images[currentIdx];
+      if (!imgData) return;
+      ensureImgEl(imgData);
+      renderPager(images.length, 'Halaman', currentIdx, idx => {
+        currentIdx = idx;
+        renderProofImage();
+      });
+    }
+
+    function renderInvoiceItem() {
+      const inv = invoiceItems[currentIdx];
+      if (!inv) return;
+      if (nameEl) nameEl.textContent = inv.title || 'Dokumentasi Transaksi Grosir';
+      if (metaEl) metaEl.textContent = (inv.date_label ? 'Tanggal: ' + inv.date_label + ' · ' : '') + (inv.category || '');
+      if (counterEl) {
+        counterEl.hidden = invoiceItems.length < 2;
+        counterEl.textContent = 'Faktur ' + (currentIdx + 1) + ' dari ' + invoiceItems.length;
+      }
+      setZoom(false);
+      ensureImgEl(inv);
+      renderPager(invoiceItems.length, 'Faktur', currentIdx, idx => {
+        currentIdx = idx;
+        renderInvoiceItem();
+      });
+    }
+
+    function showDialog() {
+      if (typeof lightbox.showModal === 'function') lightbox.showModal();
+      else lightbox.setAttribute('open', '');
+      syncOverlays();
     }
 
     function openProofModal(idx) {
       const item = proofItems[idx];
       if (!item || !Array.isArray(item.images) || !item.images.length) return;
+      activeKind = 'testimonial';
       currentItem = item;
-      currentImageIdx = 0;
+      currentIdx = 0;
+      lightbox.classList.remove('kkg-lightbox--wide');
+      if (badgeEl) badgeEl.textContent = 'Bukti Chat WhatsApp Asli';
       if (nameEl) nameEl.textContent = item.name || '';
       if (metaEl) metaEl.textContent = item.order_highlight || item.category || '';
+      if (toolsEl) toolsEl.hidden = true;
+      if (closeBtn) closeBtn.setAttribute('aria-label', 'Tutup tampilan bukti chat');
+      if (prevImgBtn) prevImgBtn.setAttribute('aria-label', 'Foto bukti chat sebelumnya');
+      if (nextImgBtn) nextImgBtn.setAttribute('aria-label', 'Foto bukti chat berikutnya');
+      if (dismissEl) dismissEl.textContent = 'Tutup Bukti Chat';
+      setZoom(false);
       renderProofImage();
-      if (typeof lightbox.showModal === 'function') lightbox.showModal();
-      else lightbox.setAttribute('open', '');
-      syncOverlays();
+      showDialog();
+    }
+
+    function openInvoiceModal(idx) {
+      if (!invoiceItems[idx]) return;
+      activeKind = 'invoice';
+      currentItem = null;
+      currentIdx = idx;
+      lightbox.classList.add('kkg-lightbox--wide');
+      if (badgeEl) badgeEl.textContent = 'Bukti Transaksi Grosir Nyata';
+      if (toolsEl) toolsEl.hidden = false;
+      if (closeBtn) closeBtn.setAttribute('aria-label', 'Tutup detail faktur');
+      if (prevImgBtn) prevImgBtn.setAttribute('aria-label', 'Faktur sebelumnya');
+      if (nextImgBtn) nextImgBtn.setAttribute('aria-label', 'Faktur berikutnya');
+      if (dismissEl) dismissEl.textContent = 'Tutup Detail Faktur';
+      renderInvoiceItem();
+      showDialog();
+    }
+
+    function stepLightbox(delta) {
+      if (activeKind === 'invoice') {
+        if (invoiceItems.length < 2) return;
+        currentIdx = (currentIdx + delta + invoiceItems.length) % invoiceItems.length;
+        renderInvoiceItem();
+        return;
+      }
+      if (activeKind === 'testimonial') {
+        const totalImgs = currentItem && currentItem.images ? currentItem.images.length : 0;
+        if (totalImgs < 2) return;
+        currentIdx = (currentIdx + delta + totalImgs) % totalImgs;
+        renderProofImage();
+      }
     }
 
     root.querySelectorAll('[data-kkg-lightbox-open]').forEach(btn => {
@@ -541,26 +639,36 @@
       });
     });
 
+    root.querySelectorAll('[data-kkg-invoice-open]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.invoiceIndex);
+        if (!Number.isNaN(idx)) openInvoiceModal(idx);
+      });
+    });
+
+    if (zoomBtn) zoomBtn.addEventListener('click', () => setZoom(!isZoomed));
+    if (figureEl) figureEl.addEventListener('click', () => {
+      if (activeKind === 'invoice') setZoom(!isZoomed);
+    });
+
     attachClosedByFallback(lightbox);
     if (closeBtn) closeBtn.addEventListener('click', () => lightbox.close());
-    if (prevImgBtn) prevImgBtn.addEventListener('click', () => {
-      const totalImgs = currentItem && currentItem.images ? currentItem.images.length : 0;
-      if (totalImgs < 2) return;
-      currentImageIdx = (currentImageIdx - 1 + totalImgs) % totalImgs;
-      renderProofImage();
-    });
-    if (nextImgBtn) nextImgBtn.addEventListener('click', () => {
-      const totalImgs = currentItem && currentItem.images ? currentItem.images.length : 0;
-      if (totalImgs < 2) return;
-      currentImageIdx = (currentImageIdx + 1) % totalImgs;
-      renderProofImage();
+    if (prevImgBtn) prevImgBtn.addEventListener('click', () => stepLightbox(-1));
+    if (nextImgBtn) nextImgBtn.addEventListener('click', () => stepLightbox(1));
+    lightbox.addEventListener('keydown', e => {
+      if (!lightbox.open) return;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); stepLightbox(-1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); stepLightbox(1); }
     });
     lightbox.addEventListener('close', () => {
+      activeKind = null;
+      currentItem = null;
+      setZoom(false);
       lightbox.returnValue = '';
       syncOverlays();
     });
   }
 
   root.querySelectorAll('[data-kkg-carousel]').forEach(initCarousel);
-  initTestimonialLightbox();
+  initProofLightbox();
 })();

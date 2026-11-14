@@ -19,8 +19,12 @@ $steps = array(
 if (!function_exists('kkg_visible_testimonials')) {
     require_once KKG_DIR . 'includes/testimonials.php';
 }
+if (!function_exists('kkg_visible_invoices')) {
+    require_once KKG_DIR . 'includes/invoices.php';
+}
 $faq = kkg_faq_items();
 $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
+$invoices = kkg_visible_invoices(isset($s) && is_array($s) ? $s : null);
 ?>
 <div class="kkg-root">
 <a href="#kkg-main" class="kkg-skip">Lewati ke konten</a>
@@ -209,6 +213,98 @@ $total_testimonials = count($testimonials);
     </div>
 </section>
 <?php endif; ?>
+<?php if ($invoices): ?>
+<?php
+$kkg_invoice_payload = array();
+foreach ($invoices as $inv) {
+    $kkg_invoice_payload[] = array(
+        'id' => $inv['id'],
+        'title' => $inv['title'],
+        'date_label' => $inv['date_label'],
+        'category' => $inv['category'],
+        'url' => $inv['url'],
+        'alt' => $inv['alt'],
+        'width' => $inv['width'],
+        'height' => $inv['height'],
+    );
+}
+$total_invoices = count($invoices);
+$invoice_grid_mod = $total_invoices === 1 ? 'kkg-invoices-grid--1' : ($total_invoices === 2 ? 'kkg-invoices-grid--2' : 'kkg-invoices-grid--multi');
+?>
+<section class="kkg-section kkg-invoices" id="bukti-transaksi" data-section="invoices" aria-labelledby="kkg-invoices-title">
+    <div class="kkg-container">
+        <div class="kkg-center kkg-invoices-head">
+            <p class="kkg-eyebrow">BUKTI TRANSAKSI</p>
+            <h2 id="kkg-invoices-title">Bukti Transaksi Grosir Nyata</h2>
+            <p class="kkg-invoices-sub">Dokumentasi transaksi penjualan KK Underwear sebagai bukti aktivitas pemesanan grosir untuk kebutuhan stok toko, agen, dan distributor.</p>
+        </div>
+        <div class="kkg-carousel kkg-carousel--invoices" data-kkg-carousel data-carousel-label="Bukti Transaksi Grosir" data-track-label="Daftar bukti transaksi grosir">
+            <div class="kkg-carousel-controls" data-kkg-carousel-controls hidden>
+                <button type="button" class="kkg-carousel-btn kkg-carousel-btn--prev" data-kkg-carousel-prev aria-label="Faktur sebelumnya"><?php echo kkg_icon('chevron-left', 20); ?></button>
+                <button type="button" class="kkg-carousel-btn kkg-carousel-btn--next" data-kkg-carousel-next aria-label="Faktur berikutnya"><?php echo kkg_icon('chevron-right', 20); ?></button>
+            </div>
+            <div class="kkg-invoices-grid <?php echo esc_attr($invoice_grid_mod); ?> kkg-carousel-track" data-kkg-carousel-track>
+            <?php foreach ($invoices as $inv_index => $inv): ?>
+                <div class="kkg-invoice-slide" data-kkg-carousel-slide data-slide-label="<?php echo esc_attr(($inv_index + 1) . ' dari ' . $total_invoices); ?>" data-marker-name="<?php echo esc_attr('Pilih faktur ' . ($inv_index + 1)); ?>">
+                <article class="kkg-invoice-card">
+                    <button
+                        type="button"
+                        class="kkg-invoice-preview"
+                        data-kkg-invoice-open
+                        data-invoice-index="<?php echo esc_attr((string) $inv_index); ?>"
+                        aria-label="<?php echo esc_attr('Lihat detail faktur transaksi grosir tanggal ' . $inv['date_label'] . ', kategori ' . $inv['category']); ?>"
+                    >
+                        <span class="kkg-invoice-frame">
+                            <img
+                                src="<?php echo esc_url($inv['url']); ?>"
+                                alt="<?php echo esc_attr($inv['alt']); ?>"
+                                width="<?php echo esc_attr((string) $inv['width']); ?>"
+                                height="<?php echo esc_attr((string) $inv['height']); ?>"
+                                loading="lazy"
+                                decoding="async"
+                            >
+                        </span>
+                    </button>
+                    <div class="kkg-invoice-body">
+                        <?php if (empty($inv['is_approved_for_publication']) && !empty($inv['is_verified'])): ?>
+                        <div class="kkg-invoice-stage-row">
+                            <span class="kkg-testimonial-stage-badge">Preview Staging · Menunggu Persetujuan</span>
+                        </div>
+                        <?php endif; ?>
+                        <h3 class="kkg-invoice-title"><?php echo esc_html($inv['title']); ?></h3>
+                        <dl class="kkg-invoice-meta">
+                            <div>
+                                <dt><?php echo kkg_icon('calendar', 14); ?><span>Tanggal</span></dt>
+                                <dd><?php echo esc_html($inv['date_label']); ?></dd>
+                            </div>
+                            <div>
+                                <dt><?php echo kkg_icon('package', 14); ?><span>Produk</span></dt>
+                                <dd><?php echo esc_html($inv['category']); ?></dd>
+                            </div>
+                        </dl>
+                        <button
+                            type="button"
+                            class="kkg-invoice-detail-btn"
+                            data-kkg-invoice-open
+                            data-invoice-index="<?php echo esc_attr((string) $inv_index); ?>"
+                        >
+                            <?php echo kkg_icon('zoom-in', 16); ?>
+                            <span>Lihat Detail Faktur</span>
+                        </button>
+                    </div>
+                </article>
+                </div>
+            <?php endforeach; ?>
+            </div>
+            <p class="kkg-sr-only" role="status" aria-live="polite" data-kkg-carousel-status></p>
+            <div class="kkg-carousel-footer">
+                <nav class="kkg-carousel-markers" aria-label="Pilih bukti transaksi" data-kkg-carousel-markers hidden></nav>
+            </div>
+        </div>
+        <script type="application/json" data-kkg-invoice-data><?php echo wp_json_encode($kkg_invoice_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
+    </div>
+</section>
+<?php endif; ?>
 <section class="kkg-section kkg-faq" id="faq" data-section="faq" aria-labelledby="kkg-faq-title">
     <div class="kkg-container kkg-faq-grid">
         <div><p class="kkg-eyebrow">PERTANYAAN UMUM</p><h2 id="kkg-faq-title">Informasi sebelum <br><em>pesan grosir.</em></h2></div>
@@ -257,23 +353,30 @@ $total_testimonials = count($testimonials);
     <p class="kkg-dialog-note">Analytics hanya diteruskan ke integrasi yang telah diaudit. Halaman ini tidak memasang tag analitik sendiri.</p>
     <div class="kkg-dialog-actions"><button type="button" class="kkg-btn-outline" data-kkg-close-secondary>Tutup</button><button type="button" class="kkg-btn-solid" data-kkg-save>Simpan Pilihan</button></div>
 </dialog>
-<?php if ($testimonials): ?>
+<?php if ($testimonials || $invoices): ?>
 <dialog class="kkg-lightbox" closedby="any" aria-labelledby="kkg-lightbox-title" data-kkg-lightbox>
     <div class="kkg-lightbox-surface">
-        <button type="button" class="kkg-lightbox-close" data-kkg-lightbox-close aria-label="Tutup tampilan bukti chat"><?php echo kkg_icon('x', 20); ?></button>
+        <button type="button" class="kkg-lightbox-close" data-kkg-lightbox-close aria-label="Tutup tampilan bukti dokumen"><?php echo kkg_icon('x', 20); ?></button>
         <div class="kkg-lightbox-head">
-            <span class="kkg-lightbox-badge">Bukti Chat WhatsApp Asli</span>
+            <span class="kkg-lightbox-badge" data-kkg-lightbox-badge>Bukti Chat WhatsApp Asli</span>
             <h3 id="kkg-lightbox-title" data-kkg-lightbox-name></h3>
             <p class="kkg-lightbox-sub" data-kkg-lightbox-meta></p>
         </div>
+        <div class="kkg-lightbox-tools" data-kkg-lightbox-tools hidden>
+            <span class="kkg-lightbox-counter" data-kkg-lightbox-counter hidden></span>
+            <button type="button" class="kkg-lightbox-zoom-btn" data-kkg-lightbox-zoom aria-pressed="false">
+                <?php echo kkg_icon('zoom-in', 15); ?>
+                <span data-kkg-lightbox-zoom-label>Perbesar Faktur</span>
+            </button>
+        </div>
         <div class="kkg-lightbox-stage">
-            <button type="button" class="kkg-lightbox-nav kkg-lightbox-nav--prev" data-kkg-lightbox-prev aria-label="Foto bukti chat sebelumnya" hidden><?php echo kkg_icon('chevron-left', 18); ?></button>
+            <button type="button" class="kkg-lightbox-nav kkg-lightbox-nav--prev" data-kkg-lightbox-prev aria-label="Sebelumnya" hidden><?php echo kkg_icon('chevron-left', 18); ?></button>
             <figure class="kkg-lightbox-figure" data-kkg-lightbox-figure></figure>
-            <button type="button" class="kkg-lightbox-nav kkg-lightbox-nav--next" data-kkg-lightbox-next aria-label="Foto bukti chat berikutnya" hidden><?php echo kkg_icon('chevron-right', 18); ?></button>
+            <button type="button" class="kkg-lightbox-nav kkg-lightbox-nav--next" data-kkg-lightbox-next aria-label="Berikutnya" hidden><?php echo kkg_icon('chevron-right', 18); ?></button>
         </div>
         <div class="kkg-lightbox-pages" data-kkg-lightbox-pages hidden></div>
         <form method="dialog" class="kkg-lightbox-foot">
-            <button type="submit" class="kkg-btn-outline kkg-lightbox-dismiss">Tutup Bukti Chat</button>
+            <button type="submit" class="kkg-btn-outline kkg-lightbox-dismiss" data-kkg-lightbox-dismiss>Tutup Bukti Chat</button>
         </form>
     </div>
 </dialog>

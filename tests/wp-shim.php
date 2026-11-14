@@ -4,7 +4,7 @@ define('ABSPATH', __DIR__ . '/');
 define('ARRAY_A', 'ARRAY_A');
 define('KKG_DIR', dirname(__DIR__) . '/wordpress/kk-grosir/');
 if (!defined('KKG_URL')) { define('KKG_URL', '/'); }
-if (!defined('KKG_VERSION')) { define('KKG_VERSION', '0.2.12'); }
+if (!defined('KKG_VERSION')) { define('KKG_VERSION', '0.2.13'); }
 define('KKG_LOCAL_PREVIEW', true);
 $GLOBALS['kkg_test_options'] = array('kkg_settings' => array('mode' => 'staging'));
 function get_option($k, $fallback = false) { return $GLOBALS['kkg_test_options'][$k] ?? $fallback; }
@@ -15,6 +15,7 @@ function wp_json_encode($v, $flags = 0) { return json_encode($v, $flags); }
 function esc_html($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function esc_attr($v) { return esc_html($v); }
 function esc_url($v) { return esc_html($v); }
+function esc_url_raw($v) { return trim((string) $v); }
 function home_url($path = '') {
     $base = $GLOBALS['kkg_test_home_url'] ?? 'https://example.test';
     if ($path === '') { return $base; }
@@ -53,4 +54,4 @@ function rest_url($path = '') { return 'https://example.test/wp-json/' . ltrim((
 function wp_create_nonce($action = -1) { return 'nonce-' . $action; }
 function __return_false() { return false; }
 function __return_empty_array() { return array(); }
-foreach (array('domain', 'settings', 'presentation', 'seo', 'testimonials') as $file) require_once KKG_DIR . 'includes/' . $file . '.php';
+foreach (array('domain', 'settings', 'presentation', 'seo', 'testimonials', 'invoices') as $file) require_once KKG_DIR . 'includes/' . $file . '.php';

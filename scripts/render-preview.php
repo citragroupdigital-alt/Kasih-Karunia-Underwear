@@ -36,6 +36,46 @@ if ($testimonialFixture === 'empty') {
         return $items;
     });
 }
+$invoiceFixture = $argv[4] ?? '';
+if ($invoiceFixture === 'empty') {
+    add_filter('kkg_invoices_items', static function () { return array(); });
+} elseif ($invoiceFixture === 'unapproved') {
+    add_filter('kkg_invoices_items', static function ($items) {
+        foreach ($items as &$item) {
+            $item['is_approved_for_publication'] = false;
+        }
+        return $items;
+    });
+} elseif ($invoiceFixture === 'missing_image') {
+    add_filter('kkg_invoices_items', static function ($items) {
+        foreach ($items as &$item) {
+            $item['image'] = 'assets/invoices/does-not-exist.webp';
+            $item['is_approved_for_publication'] = true;
+        }
+        return $items;
+    });
+} elseif (in_array($invoiceFixture, array('1', '2', '3', '4'), true)) {
+    add_filter('kkg_invoices_items', static function ($items) use ($invoiceFixture) {
+        foreach ($items as &$item) {
+            $item['is_approved_for_publication'] = true;
+        }
+        unset($item);
+        if ($invoiceFixture === '1') {
+            return array_slice($items, 0, 1);
+        }
+        if ($invoiceFixture === '2') {
+            return array_slice($items, 0, 2);
+        }
+        if ($invoiceFixture === '4' && !empty($items)) {
+            $extra = $items[0];
+            $extra['id'] = 'invoice-04';
+            $extra['date'] = '2026-09-25';
+            $extra['date_label'] = '25 September 2026';
+            $items[] = $extra;
+        }
+        return $items;
+    });
+}
 ?><!doctype html><html <?php echo kkg_seo_language_attributes('lang="en-US"'); ?>><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <?php kkg_seo_render_head(); ?><link rel="stylesheet" href="/assets/landing.css?v=<?php echo esc_attr(KKG_VERSION); ?>"></head><body class="kkg-page">
 <?php echo kkg_render(); ?>
