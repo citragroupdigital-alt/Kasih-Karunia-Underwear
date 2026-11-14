@@ -66,7 +66,7 @@ function kkg_seo_title_text() {
 }
 
 function kkg_seo_description() {
-    return 'Supplier grosir pakaian dalam Surabaya untuk toko, agen dan distributor. Minimum order 50 lusin. Tersedia bra, celana dalam, kaos kaki dan handuk. Minta katalog.';
+    return 'Supplier grosir pakaian dalam Surabaya untuk toko, agen, dan distributor. Minimum 50 lusin. Bra, celana dalam, kaos kaki, handuk. Minta katalog.';
 }
 
 function kkg_seo_robots($s = null) {

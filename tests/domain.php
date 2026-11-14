@@ -56,8 +56,8 @@ check(count($blockers) >= 7 && in_array('assets_reviewed', $blockers, true), 're
 $seoStaging = kkg_settings(); $seoStaging['mode'] = 'staging';
 check(strpos(kkg_seo_robots($seoStaging), 'noindex') !== false, 'staging robots noindex');
 check(kkg_seo_title_text() === 'Grosir Pakaian Dalam Surabaya | Supplier KK Underwear' && strlen(kkg_seo_title_text()) <= 65, 'SEO title matches B2B wholesale target');
-check(kkg_seo_description() === 'Supplier grosir pakaian dalam Surabaya untuk toko, agen dan distributor. Minimum order 50 lusin. Tersedia bra, celana dalam, kaos kaki dan handuk. Minta katalog.', 'SEO meta description updated for 50 lusin');
-check(strlen(kkg_seo_description()) >= 120 && strlen(kkg_seo_description()) <= 165, 'SEO meta description length');
+check(kkg_seo_description() === 'Supplier grosir pakaian dalam Surabaya untuk toko, agen, dan distributor. Minimum 50 lusin. Bra, celana dalam, kaos kaki, handuk. Minta katalog.', 'SEO meta description matches exact 144-char B2B target');
+check(strlen(kkg_seo_description()) === 144, 'SEO meta description length is exactly 144 chars');
 $ld = kkg_seo_json_ld($seoStaging);
 check(count($ld['@graph']) === 5, 'JSON-LD graph has 5 nodes');
 check($ld['@graph'][0]['address']['addressLocality'] === 'Surabaya', 'Verified Surabaya locality in Schema');
@@ -71,8 +71,8 @@ check(count($ld['@graph'][3]['itemListElement']) === count(kkg_catalog_items()) 
 check(count($ld['@graph'][4]['mainEntity']) === count(kkg_faq_items()) && count(kkg_faq_items()) === 9, 'FAQPage schema matches 9 FAQ items');
 $ldJson = json_encode($ld);
 check(strpos($ldJson, 'Review') === false && strpos($ldJson, 'AggregateRating') === false, 'No Review or AggregateRating schema emitted');
-check(KKG_VERSION === '0.2.8', 'Plugin/asset version bumped to 0.2.8');
-check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.8') !== false, 'Main plugin header version 0.2.8');
+check(KKG_VERSION === '0.2.9', 'Plugin/asset version bumped to 0.2.9');
+check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.9') !== false, 'Main plugin header version 0.2.9');
 check(kkg_visible_testimonials(array('mode' => 'active')) === array(), 'Placeholders hidden on public active mode');
 check(kkg_visible_testimonials(array('mode' => 'off')) === array(), 'Placeholders hidden when mode off');
 $GLOBALS['kkg_test_can_manage'] = false;
