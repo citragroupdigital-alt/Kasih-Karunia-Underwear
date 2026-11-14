@@ -33,12 +33,28 @@
       toastTimer = setTimeout(() => { status.hidden = true; status.textContent = ''; }, 4500);
     }
   }
+  const carouselSyncCallbacks = [];
+  function syncAutoplayAll() {
+    carouselSyncCallbacks.forEach(fn => fn());
+  }
   function syncOverlays() {
     root.classList.toggle('kkg-has-banner', !banner.hidden);
+    const anyDialogOpen = Boolean(root.querySelector('dialog[open]'));
+    syncAutoplayAll();
     if (!stickyBar) return;
-    const show = heroPassed && visibleGuards.size === 0 && banner.hidden && !dialog.open && !externalDialogOpen;
+    const show = heroPassed && visibleGuards.size === 0 && banner.hidden && !anyDialogOpen && !externalDialogOpen;
     stickyBar.hidden = !show;
     root.classList.toggle('kkg-has-sticky', show);
+  }
+  function attachClosedByFallback(modalEl) {
+    if (!modalEl || ('closedBy' in HTMLDialogElement.prototype)) return;
+    let pressedOutside = false;
+    const outside = e => {
+      const r = modalEl.getBoundingClientRect();
+      return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+    };
+    modalEl.addEventListener('pointerdown', e => { pressedOutside = outside(e); });
+    modalEl.addEventListener('pointerup', e => { if (pressedOutside && outside(e)) modalEl.close(); });
   }
   function applyConsent(value, persist) {
     consent = {
@@ -129,15 +145,7 @@
   }, true));
   root.querySelectorAll('[data-kkg-close],[data-kkg-close-secondary]').forEach(btn => btn.addEventListener('click', () => dialog.close()));
   dialog.addEventListener('close', syncOverlays);
-  if (!('closedBy' in HTMLDialogElement.prototype)) {
-    let pressedOutside = false;
-    const outside = e => {
-      const r = dialog.getBoundingClientRect();
-      return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
-    };
-    dialog.addEventListener('pointerdown', e => { pressedOutside = outside(e); });
-    dialog.addEventListener('pointerup', e => { if (pressedOutside && outside(e)) dialog.close(); });
-  }
+  attachClosedByFallback(dialog);
   if ('IntersectionObserver' in window && stickyBar && heroCtaWrap) {
     heroPassed = heroCtaWrap.getBoundingClientRect().bottom <= 0;
     syncOverlays();
@@ -219,8 +227,14 @@
     const nextBtn = carousel.querySelector('[data-kkg-carousel-next]');
     const markersNav = carousel.querySelector('[data-kkg-carousel-markers]');
     const statusEl = carousel.querySelector('[data-kkg-carousel-status]');
+    const autoplayBtn = carousel.querySelector('[data-kkg-carousel-autoplay-toggle]');
+    const autoplayLabel = autoplayBtn ? autoplayBtn.querySelector('[data-kkg-autoplay-label]') : null;
+    const pauseIcon = autoplayBtn ? autoplayBtn.querySelector('[data-kkg-autoplay-icon="pause"]') : null;
+    const playIcon = autoplayBtn ? autoplayBtn.querySelector('[data-kkg-autoplay-icon="play"]') : null;
     const slides = track ? Array.from(track.querySelectorAll('[data-kkg-carousel-slide]')) : [];
     const total = slides.length;
+    const alwaysActive = carousel.dataset.carouselScope === 'always';
+    const autoplayMs = Math.max(0, Number(carousel.dataset.carouselAutoplay) || 0);
     const supportsLoop = total >= 3 && supportsCssSibling;
     const earlyPark = total >= 4 ? 1 : 0;
     let active = false;
@@ -232,6 +246,13 @@
     let settleTimer = null;
     let unlockA = 0;
     let unlockB = 0;
+    let autoplayTimer = 0;
+    let pointerResumeTimer = 0;
+    let userPaused = reduceMq.matches;
+    let isHovered = false;
+    let isFocusInside = false;
+    let isPointerPaused = false;
+    let isInView = !('IntersectionObserver' in window);
     let markers = [];
 
     function clampOffset(slide) {
@@ -259,6 +280,40 @@
         if (i === idx) markers[i].setAttribute('aria-current', 'true');
         else markers[i].removeAttribute('aria-current');
       }
+    }
+
+    function updateAutoplayButton() {
+      if (!autoplayBtn) return;
+      const showControl = active && autoplayMs > 0 && total >= 2 && !reduceMq.matches;
+      autoplayBtn.hidden = !showControl;
+      if (!showControl) return;
+      autoplayBtn.setAttribute('aria-label', userPaused ? 'Putar otomatis testimoni' : 'Jeda putar otomatis testimoni');
+      if (autoplayLabel) autoplayLabel.textContent = userPaused ? 'Putar' : 'Jeda';
+      if (pauseIcon) pauseIcon.hidden = userPaused;
+      if (playIcon) playIcon.hidden = !userPaused;
+    }
+
+    function syncAutoplay() {
+      clearTimeout(autoplayTimer);
+      autoplayTimer = 0;
+      updateAutoplayButton();
+      const anyDialogOpen = Boolean(root.querySelector('dialog[open]'));
+      if (anyDialogOpen) {
+        clearTimeout(pointerResumeTimer);
+        isPointerPaused = false;
+      }
+      const shouldRun = active && autoplayMs > 0 && total >= 2 && !reduceMq.matches &&
+        !userPaused && !isHovered && !isFocusInside && !isPointerPaused &&
+        isInView && !document.hidden && !anyDialogOpen;
+      if (autoplayMs > 0) carousel.dataset.autoplayState = shouldRun ? 'running' : 'paused';
+      if (!shouldRun) return;
+      autoplayTimer = setTimeout(() => {
+        autoplayTimer = 0;
+        if (!active) return;
+        const base = pendingTarget !== null ? pendingTarget : nearestSlide();
+        const nextIdx = supportsLoop ? base + 1 : (base + 1) % total;
+        goToSlide(nextIdx);
+      }, autoplayMs);
     }
 
     function applySettled(idx, announce) {
@@ -289,11 +344,11 @@
             });
           });
         }
-        prevBtn.disabled = false;
-        nextBtn.disabled = false;
+        if (prevBtn) prevBtn.disabled = false;
+        if (nextBtn) nextBtn.disabled = false;
       } else {
-        prevBtn.disabled = idx <= 0;
-        nextBtn.disabled = idx >= total - 1;
+        if (prevBtn) prevBtn.disabled = idx <= 0;
+        if (nextBtn) nextBtn.disabled = idx >= total - 1;
       }
       updateMarker(idx);
       if (announce && idx !== settledIndex && statusEl) {
@@ -307,6 +362,7 @@
       if (pendingTarget !== null && Math.abs(track.scrollLeft - pendingDest) > 12) return;
       pendingTarget = null;
       applySettled(nearestSlide(), true);
+      syncAutoplay();
     }
 
     function goToSlide(idx) {
@@ -325,9 +381,11 @@
       if (Math.abs(dest - track.scrollLeft) <= 1) {
         pendingTarget = null;
         applySettled(targetIdx, false);
+        syncAutoplay();
         return;
       }
       track.scrollTo({ left: dest, behavior: reduceMq.matches ? 'auto' : 'smooth' });
+      syncAutoplay();
     }
 
     function onScroll() {
@@ -344,7 +402,18 @@
       }
     }
 
-    function cancelPending() { pendingTarget = null; }
+    function cancelPending(e) {
+      pendingTarget = null;
+      if (autoplayMs > 0 && !(e && e.target && e.target.closest && e.target.closest('[data-kkg-lightbox-open]'))) {
+        isPointerPaused = true;
+        clearTimeout(pointerResumeTimer);
+        pointerResumeTimer = setTimeout(() => {
+          isPointerPaused = false;
+          syncAutoplay();
+        }, 2500);
+        syncAutoplay();
+      }
+    }
 
     function buildMarkers() {
       if (markers.length || !markersNav) return;
@@ -383,20 +452,25 @@
       track.scrollTo({ left: clampOffset(slides[0]), behavior: 'instant' });
       updateMarker(0);
       if (statusEl) statusEl.textContent = '';
+      syncAutoplay();
     }
 
     function disableCarousel() {
       if (!active) return;
       active = false;
       pendingTarget = null;
+      clearTimeout(autoplayTimer);
+      clearTimeout(pointerResumeTimer);
       cancelAnimationFrame(rafId);
       cancelAnimationFrame(unlockA);
       cancelAnimationFrame(unlockB);
       clearTimeout(settleTimer);
       rafId = 0;
+      autoplayTimer = 0;
       carousel.removeAttribute('role');
       carousel.removeAttribute('aria-roledescription');
       carousel.removeAttribute('aria-label');
+      carousel.removeAttribute('data-autoplay-state');
       track.removeAttribute('tabindex');
       track.removeAttribute('role');
       track.removeAttribute('aria-label');
@@ -411,11 +485,12 @@
       });
       if (controls) controls.hidden = true;
       if (markersNav) markersNav.hidden = true;
+      if (autoplayBtn) autoplayBtn.hidden = true;
       if (statusEl) statusEl.textContent = '';
     }
 
     function syncCarouselMode() {
-      if (mobileMq.matches) enableCarousel();
+      if (alwaysActive || mobileMq.matches) enableCarousel();
       else disableCarousel();
     }
 
@@ -427,6 +502,11 @@
       const base = pendingTarget !== null ? pendingTarget : nearestSlide();
       goToSlide(base + 1);
     });
+    if (autoplayBtn) autoplayBtn.addEventListener('click', () => {
+      if (reduceMq.matches) return;
+      userPaused = !userPaused;
+      syncAutoplay();
+    });
     if (track) {
       track.addEventListener('scroll', onScroll, { passive: true });
       if (supportsScrollEnd) track.addEventListener('scrollend', onSettle);
@@ -434,13 +514,151 @@
       track.addEventListener('touchstart', cancelPending, { passive: true });
       track.addEventListener('wheel', cancelPending, { passive: true });
     }
-    if (typeof mobileMq.addEventListener === 'function') {
-      mobileMq.addEventListener('change', syncCarouselMode);
-    } else if (typeof mobileMq.addListener === 'function') {
-      mobileMq.addListener(syncCarouselMode);
+    if (autoplayMs > 0) {
+      carousel.addEventListener('mouseenter', () => { isHovered = true; syncAutoplay(); });
+      carousel.addEventListener('mouseleave', () => { isHovered = false; syncAutoplay(); });
+      carousel.addEventListener('focusin', () => { isFocusInside = true; syncAutoplay(); });
+      carousel.addEventListener('focusout', e => {
+        if (!e.relatedTarget || !carousel.contains(e.relatedTarget)) {
+          isFocusInside = false;
+          syncAutoplay();
+        }
+      });
+      carousel.addEventListener('keydown', e => {
+        if (!active || total < 2 || root.querySelector('dialog[open]')) return;
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+        e.preventDefault();
+        const base = pendingTarget !== null ? pendingTarget : nearestSlide();
+        goToSlide(e.key === 'ArrowRight' ? base + 1 : base - 1);
+      });
+      carouselSyncCallbacks.push(syncAutoplay);
+      document.addEventListener('visibilitychange', syncAutoplay);
+      if ('IntersectionObserver' in window) {
+        const r = carousel.getBoundingClientRect();
+        isInView = r.bottom > 0 && r.top < window.innerHeight;
+        const viewObserver = new IntersectionObserver(entries => {
+          const entry = entries[entries.length - 1];
+          isInView = entry.isIntersecting;
+          syncAutoplay();
+        }, { threshold: 0.2 });
+        viewObserver.observe(carousel);
+      }
+      if (typeof reduceMq.addEventListener === 'function') {
+        reduceMq.addEventListener('change', () => { if (reduceMq.matches) userPaused = true; syncAutoplay(); });
+      }
+    }
+    if (!alwaysActive) {
+      if (typeof mobileMq.addEventListener === 'function') {
+        mobileMq.addEventListener('change', syncCarouselMode);
+      } else if (typeof mobileMq.addListener === 'function') {
+        mobileMq.addListener(syncCarouselMode);
+      }
     }
     syncCarouselMode();
   }
 
+  function initTestimonialLightbox() {
+    const lightbox = root.querySelector('[data-kkg-lightbox]');
+    const proofScript = root.querySelector('[data-kkg-proof-data]');
+    if (!lightbox || !proofScript) return;
+    let proofItems = [];
+    try {
+      proofItems = JSON.parse(proofScript.textContent || '[]');
+    } catch (_) {
+      return;
+    }
+    if (!Array.isArray(proofItems) || !proofItems.length) return;
+
+    const nameEl = lightbox.querySelector('[data-kkg-lightbox-name]');
+    const metaEl = lightbox.querySelector('[data-kkg-lightbox-meta]');
+    const figureEl = lightbox.querySelector('[data-kkg-lightbox-figure]');
+    const prevImgBtn = lightbox.querySelector('[data-kkg-lightbox-prev]');
+    const nextImgBtn = lightbox.querySelector('[data-kkg-lightbox-next]');
+    const pagesEl = lightbox.querySelector('[data-kkg-lightbox-pages]');
+    const closeBtn = lightbox.querySelector('[data-kkg-lightbox-close]');
+    let currentItem = null;
+    let currentImageIdx = 0;
+
+    function renderProofImage() {
+      const images = currentItem && Array.isArray(currentItem.images) ? currentItem.images : [];
+      const imgData = images[currentImageIdx];
+      if (!imgData || !figureEl) return;
+      let imgEl = figureEl.querySelector('img');
+      if (!imgEl) {
+        imgEl = document.createElement('img');
+        imgEl.className = 'kkg-lightbox-img';
+        imgEl.decoding = 'async';
+        figureEl.appendChild(imgEl);
+      }
+      imgEl.src = imgData.url;
+      imgEl.alt = imgData.alt || '';
+      if (imgData.width) imgEl.width = Number(imgData.width);
+      if (imgData.height) imgEl.height = Number(imgData.height);
+
+      const multi = images.length > 1;
+      if (prevImgBtn) prevImgBtn.hidden = !multi;
+      if (nextImgBtn) nextImgBtn.hidden = !multi;
+      if (pagesEl) {
+        pagesEl.hidden = !multi;
+        pagesEl.textContent = '';
+        if (multi) {
+          images.forEach((_, idx) => {
+            const pBtn = document.createElement('button');
+            pBtn.type = 'button';
+            pBtn.className = 'kkg-lightbox-page-btn';
+            pBtn.textContent = 'Halaman ' + (idx + 1);
+            if (idx === currentImageIdx) pBtn.setAttribute('aria-current', 'true');
+            pBtn.addEventListener('click', () => {
+              currentImageIdx = idx;
+              renderProofImage();
+            });
+            pagesEl.appendChild(pBtn);
+          });
+        }
+      }
+    }
+
+    function openProofModal(idx) {
+      const item = proofItems[idx];
+      if (!item || !Array.isArray(item.images) || !item.images.length) return;
+      currentItem = item;
+      currentImageIdx = 0;
+      if (nameEl) nameEl.textContent = item.name || '';
+      if (metaEl) metaEl.textContent = item.order_highlight || item.category || '';
+      renderProofImage();
+      if (typeof lightbox.showModal === 'function') lightbox.showModal();
+      else lightbox.setAttribute('open', '');
+      syncOverlays();
+    }
+
+    root.querySelectorAll('[data-kkg-lightbox-open]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.proofIndex);
+        if (!Number.isNaN(idx)) openProofModal(idx);
+      });
+    });
+
+    attachClosedByFallback(lightbox);
+    if (closeBtn) closeBtn.addEventListener('click', () => lightbox.close());
+    if (prevImgBtn) prevImgBtn.addEventListener('click', () => {
+      const totalImgs = currentItem && currentItem.images ? currentItem.images.length : 0;
+      if (totalImgs < 2) return;
+      currentImageIdx = (currentImageIdx - 1 + totalImgs) % totalImgs;
+      renderProofImage();
+    });
+    if (nextImgBtn) nextImgBtn.addEventListener('click', () => {
+      const totalImgs = currentItem && currentItem.images ? currentItem.images.length : 0;
+      if (totalImgs < 2) return;
+      currentImageIdx = (currentImageIdx + 1) % totalImgs;
+      renderProofImage();
+    });
+    lightbox.addEventListener('close', () => {
+      lightbox.returnValue = '';
+      syncOverlays();
+    });
+  }
+
   root.querySelectorAll('[data-kkg-carousel]').forEach(initCarousel);
+  initTestimonialLightbox();
 })();

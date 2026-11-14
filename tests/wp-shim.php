@@ -4,7 +4,7 @@ define('ABSPATH', __DIR__ . '/');
 define('ARRAY_A', 'ARRAY_A');
 define('KKG_DIR', dirname(__DIR__) . '/wordpress/kk-grosir/');
 if (!defined('KKG_URL')) { define('KKG_URL', '/'); }
-if (!defined('KKG_VERSION')) { define('KKG_VERSION', '0.2.9'); }
+if (!defined('KKG_VERSION')) { define('KKG_VERSION', '0.2.10'); }
 define('KKG_LOCAL_PREVIEW', true);
 $GLOBALS['kkg_test_options'] = array('kkg_settings' => array('mode' => 'staging'));
 function get_option($k, $fallback = false) { return $GLOBALS['kkg_test_options'][$k] ?? $fallback; }
@@ -35,7 +35,17 @@ function is_page($id) { return $GLOBALS['kkg_test_is_page'] ?? true; }
 function get_post_field($key, $id) { return $key === 'post_name' ? 'grosir' : '[kk_grosir]'; }
 function has_shortcode($content, $tag) { return strpos($content, '['.$tag.']') !== false; }
 function remove_action($hook, $cb, $prio = 10) { $GLOBALS['kkg_test_removed_actions'][] = array($hook, $cb, $prio); return true; }
-function add_filter($hook, $cb, $prio = 10) { $GLOBALS['kkg_test_added_filters'][] = array($hook, $cb, $prio); return true; }
+function add_filter($hook, $cb, $prio = 10) {
+    $GLOBALS['kkg_test_added_filters'][] = array($hook, $cb, $prio);
+    $GLOBALS['kkg_test_filter_callbacks'][$hook][] = $cb;
+    return true;
+}
+function apply_filters($hook, $value, ...$args) {
+    foreach ($GLOBALS['kkg_test_filter_callbacks'][$hook] ?? array() as $cb) {
+        if (is_callable($cb)) { $value = $cb($value, ...$args); }
+    }
+    return $value;
+}
 function wp_enqueue_style($h, $src = '', $deps = array(), $ver = false) { $GLOBALS['kkg_test_styles'][$h] = array($src, $deps, $ver); }
 function wp_enqueue_script($h, $src = '', $deps = array(), $ver = false, $in_footer = false) { $GLOBALS['kkg_test_scripts'][$h] = array($src, $deps, $ver, $in_footer); }
 function wp_add_inline_script($h, $data, $pos = 'after') { $GLOBALS['kkg_test_inline_scripts'][] = array($h, $data, $pos); }

@@ -11,7 +11,7 @@ const path = require('node:path');
   try {
     const page=await browser.newPage();
     page.on('pageerror',e=>errors.push(e.message));
-    for(const width of [320,375,390,768,820,1440]) {
+    for(const width of [320,375,390,430,768,820,1024,1440]) {
       await page.setViewportSize({width,height:1000});
       const res=await page.goto('http://127.0.0.1:4173/');
       assert.equal(res.status(),200);
@@ -92,39 +92,38 @@ const path = require('node:path');
       assert.equal(graph.find(n=>n['@type']==='FAQPage')?.mainEntity?.length,9,'FAQPage schema count matches 9 FAQs');
       assert.equal(graph.find(n=>n['@type']==='OfferCatalog')?.itemListElement?.length,5,'OfferCatalog schema count matches 5 categories');
       assert.equal(graph.some(n=>n['@type']==='Review'||n['@type']==='AggregateRating'),false,'No Review or AggregateRating schema emitted');
-      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-card').count(),3,'3 testimonial cards rendered');
-      assert.deepEqual(await page.locator('[data-section="testimonials"] .kkg-testimonial-meta h3').allTextContents(),['Pak Agus','Pak Budi','Ibu Lala'],'updated testimonial author names rendered');
-      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-badge').count(),0,'CONTOH TESTIMONI badge removed');
-      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonials-sub').count(),0,'testimonials subheadline removed');
-      assert.equal(rawText.includes('Pengalaman berbelanja grosir bersama CV. Kasih Karunia.'),false,'testimonials subheadline text absent');
-      assert.equal(rawText.includes('Informasi yang membantu Anda'),false,'FAQ subheadline text absent');
+      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-card').count(),4,'4 redacted testimonial cards rendered in staging');
+      assert.deepEqual(await page.locator('[data-section="testimonials"] .kkg-testimonial-meta h3').allTextContents(),['Pak Aan','Bunda Lusi — CV. Anindiya','Bunda Hidayati','Pak Irfan — Algo Jaya'],'redacted testimonial partner names rendered in staging');
+      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-badge').count(),0,'old CONTOH TESTIMONI badge absent');
+      assert.equal(await page.locator('[data-section="testimonials"] #kkg-testimonials-title').innerText(),'Cerita Mitra & Testimoni Pelanggan','updated testimonials H2 rendered');
+      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonials-sub').innerText(),'Pengalaman dan ulasan pelanggan yang telah mempercayakan kebutuhan stok usaha mereka kepada KK Underwear.','updated testimonials subheading rendered');
       assert.equal(rawText.includes('CONTOH TESTIMONI'),false,'CONTOH TESTIMONI text absent');
       assert.equal(await page.locator('[data-section="testimonials"] [data-kkg-cta]').count(),0,'no CTA buttons inside testimonials');
-      const testiGrid=await page.locator('[data-section="testimonials"]').evaluate(sec=>{
+      const testiLayout=await page.locator('[data-section="testimonials"]').evaluate(sec=>{
         const grid=sec.querySelector('.kkg-testimonials-grid');
         const hBox=sec.querySelector('#kkg-testimonials-title').getBoundingClientRect();
         const cBox=sec.querySelector('.kkg-container').getBoundingClientRect();
         const disp=getComputedStyle(grid).display;
-        const cols=disp==='grid'?getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length:1;
-        const boxes=Array.from(grid.querySelectorAll('.kkg-testimonial-card')).map(c=>c.getBoundingClientRect());
-        return {disp,cols,row0Diff:Math.abs(boxes[0].height-boxes[1].height),row0TopDiff:Math.abs(boxes[0].top-boxes[1].top),headCenterDiff:Math.abs((hBox.left+hBox.width/2)-(cBox.left+cBox.width/2))};
+        const card=sec.querySelector('.kkg-testimonial-card--split');
+        const cardBox=card.getBoundingClientRect();
+        const copyBox=card.querySelector('.kkg-testimonial-copy').getBoundingClientRect();
+        const proofBox=card.querySelector('.kkg-testimonial-proof').getBoundingClientRect();
+        const quoteFs=parseFloat(getComputedStyle(card.querySelector('.kkg-testimonial-content p')).fontSize);
+        return {
+          disp,
+          headCenterDiff:Math.abs((hBox.left+hBox.width/2)-(cBox.left+cBox.width/2)),
+          sideBySide:copyBox.right<=proofBox.left+2,
+          stacked:copyBox.bottom<=proofBox.top+2,
+          cardFits:cardBox.width<=cBox.width+2,
+          quoteFs
+        };
       });
-      assert.equal(testiGrid.headCenterDiff<=2,true,'testimonial heading centered within container at '+width);
-      if(width>=1024){assert.equal(testiGrid.cols,3,'3 testimonial columns on desktop');assert.equal(testiGrid.row0Diff<=2&&testiGrid.row0TopDiff<=2,true,'equal card height row on desktop');}
-      else if(width>768){assert.equal(testiGrid.cols,2,'2 testimonial columns on tablet '+width);assert.equal(testiGrid.row0Diff<=2&&testiGrid.row0TopDiff<=2,true,'equal card height row on tablet');}
-      else{
-        assert.equal(testiGrid.disp,'flex','testimonials renders flex carousel on mobile '+width);assert.equal(testiGrid.row0Diff<=2,true,'equal card height across mobile carousel '+width);
-        const testiMobile=await page.locator('[data-section="testimonials"] .kkg-testimonial-card').first().evaluate(c=>{
-          const p=c.querySelector('.kkg-testimonial-content p');
-          const cs=getComputedStyle(p);
-          const fs=parseFloat(cs.fontSize);
-          const lh=parseFloat(cs.lineHeight)/fs;
-          return {cardH:c.getBoundingClientRect().height,fs,lh};
-        });
-        assert.equal(testiMobile.fs>=14&&testiMobile.fs<=15,true,'testimonial mobile quote font 14-15px at '+width+': '+testiMobile.fs);
-        assert.equal(testiMobile.lh>=1.5&&testiMobile.lh<=1.62,true,'testimonial mobile line-height 1.5-1.6 at '+width+': '+testiMobile.lh.toFixed(2));
-        assert.equal(testiMobile.cardH<=270,true,'compact mobile testimonial card height at '+width+': '+testiMobile.cardH);
-      }
+      assert.equal(testiLayout.disp,'flex','testimonials always uses horizontal flex carousel track at '+width);
+      assert.equal(testiLayout.headCenterDiff<=2,true,'testimonial heading centered within container at '+width);
+      assert.equal(testiLayout.cardFits,true,'split card fits container without overflow at '+width);
+      assert.equal(testiLayout.quoteFs>=14,true,'testimonial quote font >= 14px at '+width+': '+testiLayout.quoteFs);
+      if(width>768){assert.equal(testiLayout.sideBySide,true,'split card shows copy and WhatsApp preview side by side at '+width);}
+      else{assert.equal(testiLayout.stacked,true,'split card stacks vertically on mobile at '+width);}
       assert.equal(await page.locator('.kkg-stats strong').allTextContents().then(x=>x.join('|')),'70.000+|2.000+|40.000+');
       assert.equal((await page.locator('#kkg-faq-title').innerText()).replace(/\s+/g,' ').trim(),'Informasi sebelum pesan grosir.');
       const isMobile=width<=768;
@@ -172,27 +171,28 @@ const path = require('node:path');
       assert.equal(moqState.clip,false,'MOQ badge not clipped at '+width);
       assert.equal(/MINIMUM ORDER/i.test(moqState.text)&&/50\s*LUSIN/i.test(moqState.text)&&moqState.text.includes('Khusus pembelian grosir dalam jumlah besar')&&moqState.h>40,true,'MOQ 50 Lusin copy clear at '+width);
       assert.equal(await page.locator('.kkg-desktop-only').isVisible(),!isMobile,'about desktop tail visibility mismatch at '+width);
-      for(const secSel of ['#produk','#testimoni']){
-        assert.equal(await page.locator(secSel+' [data-kkg-carousel-controls]').isVisible(),isMobile,'carousel controls visibility mismatch for '+secSel+' at '+width);
-        assert.equal(await page.locator(secSel+' [data-kkg-carousel-markers]').isVisible(),isMobile,'carousel markers visibility mismatch for '+secSel+' at '+width);
-      }
+      assert.equal(await page.locator('#produk [data-kkg-carousel-controls]').isVisible(),isMobile,'#produk carousel controls visibility at '+width);
+      assert.equal(await page.locator('#produk [data-kkg-carousel-markers]').isVisible(),isMobile,'#produk carousel markers visibility at '+width);
+      assert.equal(await page.locator('#testimoni [data-kkg-carousel-controls]').isVisible(),true,'#testimoni carousel controls visible on desktop and mobile at '+width);
+      assert.equal(await page.locator('#testimoni [data-kkg-carousel-markers]').isVisible(),true,'#testimoni carousel markers visible on desktop and mobile at '+width);
+      assert.equal(await page.locator('#testimoni [data-kkg-carousel-autoplay-toggle]').isVisible(),true,'#testimoni autoplay Pause/Play button visible at '+width);
       if(!isMobile){
         const heroImgs=await page.evaluate(()=>Array.from(document.querySelectorAll('.kkg-hero-photo')).map(el=>({ok:el.complete&&el.naturalWidth===1200&&el.naturalHeight===1200})));
         assert.equal(heroImgs.length,1,'hero photo rendered');
         assert.equal(heroImgs.every(i=>i.ok),true,'hero photo loaded (1200x1200)');
       }
-      await page.locator('.kkg-product-grid').scrollIntoViewIfNeeded();
-      if(isMobile){
-        const btnSmall=await page.evaluate(()=>Array.from(document.querySelectorAll('.kkg-carousel-btn')).some(el=>{const r=el.getBoundingClientRect();return r.width<44||r.height<44;}));
-        const dotSmall=await page.evaluate(()=>Array.from(document.querySelectorAll('.kkg-carousel-dot')).some(el=>{const r=el.getBoundingClientRect();return r.width<24||r.height<24;}));
-        assert.equal(btnSmall,false,'carousel button touch targets >= 44x44 at '+width);
-        assert.equal(dotSmall,false,'carousel dot targets >= 24x24 (WCAG 2.2 AA) at '+width);
-        for(const [secSel,count] of [['#produk',5],['#testimoni',3]]){
+      await page.locator('#testimoni').scrollIntoViewIfNeeded();
+      {
+        const btnSmall=await page.evaluate(()=>Array.from(document.querySelectorAll('.kkg-carousel-btn')).filter(el=>el.offsetParent!==null).some(el=>{const r=el.getBoundingClientRect();return r.width<44||r.height<44;}));
+        const dotSmall=await page.evaluate(()=>Array.from(document.querySelectorAll('.kkg-carousel-dot')).filter(el=>el.offsetParent!==null).some(el=>{const r=el.getBoundingClientRect();return r.width<24||r.height<24;}));
+        assert.equal(btnSmall,false,'visible carousel button touch targets >= 44x44 at '+width);
+        assert.equal(dotSmall,false,'visible carousel dot targets >= 24x24 at '+width);
+        const sectionsToTest=isMobile?[['#produk',5],['#testimoni',4]]:[['#testimoni',4]];
+        for(const [secSel,count] of sectionsToTest){
           const sec=page.locator(secSel);
           await sec.scrollIntoViewIfNeeded();
           assert.equal(await sec.locator('[data-kkg-carousel-markers] .kkg-carousel-dot').count(),count,count+' carousel dots in '+secSel+' at '+width);
-          assert.equal(await sec.locator('[data-kkg-carousel-status]').innerText(),'',secSel+' carousel status initially silent at '+width);
-          assert.equal(await sec.locator('[data-kkg-carousel-markers] .kkg-carousel-dot').first().getAttribute('aria-current'),'true',secSel+' first slide initially current');
+          assert.equal(await sec.locator('[data-kkg-carousel-markers] .kkg-carousel-dot').first().getAttribute('aria-current'),'true',secSel+' first slide initially current at '+width);
           const centerDelta=await page.evaluate((s)=>{
             const track=document.querySelector(s+' [data-kkg-carousel-track]');
             const first=track.querySelector('[data-kkg-carousel-slide]');
@@ -202,16 +202,19 @@ const path = require('node:path');
           },secSel);
           assert.equal(centerDelta<=3,true,secSel+' first slide centered on load at '+width+' diff='+centerDelta);
           if(secSel==='#testimoni'){
-            const gapOk=await page.evaluate(()=>{
-              const p=document.querySelector('#testimoni [data-kkg-carousel-slide] .kkg-testimonial-content p').getBoundingClientRect();
+            const testiBoxOk=await page.evaluate(()=>{
+              const card=document.querySelector('#testimoni [data-kkg-carousel-slide] .kkg-testimonial-card--split').getBoundingClientRect();
+              const copy=document.querySelector('#testimoni [data-kkg-carousel-slide] .kkg-testimonial-content p').getBoundingClientRect();
+              const proof=document.querySelector('#testimoni [data-kkg-carousel-slide] .kkg-chat-preview').getBoundingClientRect();
               const prev=document.querySelector('#testimoni [data-kkg-carousel-prev]').getBoundingClientRect();
               const next=document.querySelector('#testimoni [data-kkg-carousel-next]').getBoundingClientRect();
-              const prodW=document.querySelector('#produk [data-kkg-carousel-slide]').getBoundingClientRect().width;
-              const testiW=document.querySelector('#testimoni [data-kkg-carousel-slide]').getBoundingClientRect().width;
-              return {clearLeft:prev.right<=p.left,clearRight:next.left>=p.right,sameSlideWidth:Math.abs(prodW-testiW)<=1};
+              const isDesktop=innerWidth>=769;
+              if(isDesktop) return prev.right<=copy.left && next.left>=proof.right;
+              return prev.top>=card.bottom && next.top>=card.bottom && document.documentElement.scrollWidth<=innerWidth;
             });
-            assert.equal(gapOk.clearLeft&&gapOk.clearRight,true,'testimonial controls do not overlap quote text at '+width);
-            assert.equal(gapOk.sameSlideWidth,true,'testimonial carousel matches product card width at '+width);
+            assert.equal(testiBoxOk,true,'#testimoni controls clear card copy and keep zero overflow at '+width);
+            const zoomIconOk=await page.locator('#testimoni .kkg-chat-zoom-hint .kkg-svg').first().evaluate(svg=>{const r=svg.getBoundingClientRect();return r.width>=12&&r.width<=24&&r.height>=12&&r.height<=24;});
+            assert.equal(zoomIconOk,true,'zoom icon keeps crisp 16px bounding box at '+width);
           }
           for(let idx=1;idx<count;idx++){
             await sec.locator('[data-kkg-carousel-markers] .kkg-carousel-dot').nth(idx).click();
@@ -221,16 +224,25 @@ const path = require('node:path');
           await page.waitForFunction(([s,t])=>document.querySelector(s+' [data-kkg-carousel-status]')?.textContent==='Slide 1 dari '+t,[secSel,count]);
           await sec.locator('[data-kkg-carousel-next]').click();
           await page.waitForFunction(([s,t])=>document.querySelector(s+' [data-kkg-carousel-status]')?.textContent==='Slide 2 dari '+t,[secSel,count]);
-          assert.equal(await sec.locator('[data-kkg-carousel-markers] .kkg-carousel-dot').nth(1).getAttribute('aria-current'),'true',secSel+' dot 2 becomes current on Next');
+          assert.equal(await sec.locator('[data-kkg-carousel-markers] .kkg-carousel-dot').nth(1).getAttribute('aria-current'),'true',secSel+' dot 2 becomes current on Next at '+width);
           await sec.locator('[data-kkg-carousel-prev]').click();
           await page.waitForFunction(([s,t])=>document.querySelector(s+' [data-kkg-carousel-status]')?.textContent==='Slide 1 dari '+t,[secSel,count]);
           await sec.locator('[data-kkg-carousel-prev]').click();
           await page.waitForFunction(([s,t])=>document.querySelector(s+' [data-kkg-carousel-status]')?.textContent==='Slide '+t+' dari '+t,[secSel,count]);
-          assert.equal(await sec.locator('[data-kkg-carousel-markers] .kkg-carousel-dot').nth(count-1).getAttribute('aria-current'),'true',secSel+' Previous loops cleanly from 1 to '+count);
+          assert.equal(await sec.locator('[data-kkg-carousel-markers] .kkg-carousel-dot').nth(count-1).getAttribute('aria-current'),'true',secSel+' Previous loops cleanly from 1 to '+count+' at '+width);
           await sec.locator('[data-kkg-carousel-markers] .kkg-carousel-dot').first().click();
           await page.waitForFunction(([s,t])=>document.querySelector(s+' [data-kkg-carousel-status]')?.textContent==='Slide 1 dari '+t,[secSel,count]);
         }
         await page.waitForTimeout(100);
+      }
+      await page.locator('.kkg-product-grid').scrollIntoViewIfNeeded();
+      {
+        const proofLoad=await page.locator('#testimoni .kkg-chat-screen img').first().evaluate(async img=>{
+          img.scrollIntoView({block:'center'});
+          if(!img.complete) await new Promise(r=>img.addEventListener('load',r,{once:true}));
+          return {ok:img.complete&&img.naturalWidth===460&&img.naturalHeight===920};
+        });
+        assert.equal(proofLoad.ok,true,'first WhatsApp WebP proof loads cleanly (460x920) at '+width);
       }
       await page.waitForFunction(()=>Array.from(document.querySelectorAll('.kkg-product .kkg-photo')).every(el=>el.complete&&el.naturalWidth>0));
       await page.locator('.kkg-about-image').scrollIntoViewIfNeeded();
@@ -295,12 +307,131 @@ const path = require('node:path');
       await page.setViewportSize({width,height:1000});
       const res=await page.goto('http://127.0.0.1:4173/?mode=active');
       assert.equal(res.status(),200);
-      assert.equal(await page.locator('[data-section]').count(),9,'active public mode hides testimonials placeholder');
-      assert.equal(await page.locator('[data-section="testimonials"]').count(),0,'no testimonials section in active DOM');
+      assert.equal(await page.locator('[data-section]').count(),9,'active public mode hides unapproved testimonials');
+      assert.equal(await page.locator('[data-section="testimonials"]').count(),0,'no testimonials section in active DOM while unapproved');
+      assert.equal(await page.locator('[data-kkg-lightbox]').count(),0,'no lightbox dialog in active DOM while unapproved');
       const rawActive=await page.locator('.kkg-root').textContent();
-      assert.equal(rawActive.includes('Pak Agus')||rawActive.includes('Pak Budi')||rawActive.includes('Ibu Lala')||rawActive.includes('CONTOH TESTIMONI'),false,'placeholder absent in active DOM');
+      assert.equal(rawActive.includes('Pak Aan')||rawActive.includes('Anindiya')||rawActive.includes('Hidayati')||rawActive.includes('Algo Jaya'),false,'unapproved partner names absent in active DOM');
+      const emptyRes=await page.goto('http://127.0.0.1:4173/?testimonials=empty');
+      assert.equal(emptyRes.status(),200);
+      assert.equal(await page.locator('[data-section="testimonials"]').count(),0,'empty dataset hides testimonials even in staging');
     }
-    results.push({activePublicModeHidden:'testimonials placeholder omitted in active mode on desktop and mobile'});
+    results.push({activeAndEmptyGating:'unapproved records omitted in active mode and empty datasets omit section cleanly across desktop and mobile'});
+    // Simulated approved carousel interactive checks (live scroll/swipe/keyboard, single & multi-image lightbox, focus restore, sticky hide, no body overflow lock).
+    for(const width of [375,1440]){
+      const ctx=await browser.newContext({viewport:{width,height:800}});
+      const p=await ctx.newPage();p.on('pageerror',e=>errors.push(e.message));
+      await p.goto('http://127.0.0.1:4173/?mode=active&testimonials=simulated');
+      assert.equal(await p.locator('[data-section="testimonials"] .kkg-testimonial-stage-badge').count(),0,'simulated approved active page omits staging badge');
+      // Keyboard ArrowRight/ArrowLeft while focus is inside carousel
+      await p.locator('#testimoni [data-kkg-carousel-next]').focus();
+      await p.keyboard.press('ArrowRight');
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 2 dari 4');
+      await p.keyboard.press('ArrowLeft');
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 1 dari 4');
+      // Touch swipe / horizontal scroll-snap simulation moves slide cleanly to Slide 3
+      await p.locator('#testimoni [data-kkg-carousel-track]').evaluate(tr=>{
+        tr.dispatchEvent(new Event('pointerdown'));
+        const target=tr.querySelectorAll('[data-kkg-carousel-slide]')[2];
+        tr.scrollTo({left:target.offsetLeft,behavior:'instant'});
+        tr.dispatchEvent(new Event('scroll'));
+        tr.dispatchEvent(new Event('scrollend'));
+      });
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 3 dari 4');
+      assert.equal(await p.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').nth(2).getAttribute('aria-current'),'true','swipe/scroll-snap settles cleanly on slide 3 at '+width);
+      // Move back to Slide 1 and open single-image Lightbox -> focus containment, no body.style.overflow lock, Escape focus restoration
+      await p.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').first().click();
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 1 dari 4');
+      await p.locator('#testimoni [data-kkg-carousel-slide]').first().locator('[data-kkg-lightbox-open]').click();
+      const lb=p.locator('[data-kkg-lightbox]');
+      assert.equal(await lb.evaluate(d=>d.open),true,'lightbox dialog opens natively via showModal at '+width);
+      assert.equal(await p.evaluate(()=>document.body.style.overflow),'','document.body.style.overflow left empty (CSS overscroll-behavior used)');
+      assert.equal(await p.locator('#testimoni [data-kkg-carousel]').evaluate(el=>el.dataset.autoplayState),'paused','autoplay pauses while lightbox open');
+      if(width===375){
+        await p.evaluate(()=>window.scrollTo(0,1100));
+        assert.equal(await p.locator('[data-kkg-sticky]').isVisible(),false,'mobile sticky bar stays hidden while lightbox dialog open');
+      }
+      const imgFit=await lb.locator('.kkg-lightbox-img').evaluate(async img=>{
+        if(!img.complete) await new Promise(r=>img.addEventListener('load',r,{once:true}));
+        const r=img.getBoundingClientRect();
+        const cs=getComputedStyle(img);
+        return {ok:img.complete&&img.naturalWidth===460&&img.naturalHeight===920,fit:cs.objectFit,inVw:r.width<=innerWidth&&r.height<=innerHeight};
+      });
+      assert.equal(imgFit.ok&&imgFit.fit==='contain'&&imgFit.inVw,true,'single proof image fits inside viewport with object-fit contain at '+width);
+      assert.equal(await lb.locator('[data-kkg-lightbox-pages]').isVisible(),false,'single-image lightbox hides pagination');
+      await p.keyboard.press('Escape');
+      assert.equal(await lb.evaluate(d=>d.open),false,'Escape dismisses lightbox');
+      assert.equal(await p.evaluate(()=>document.activeElement?.hasAttribute('data-kkg-lightbox-open')&&document.activeElement?.dataset.proofIndex==='0'),true,'closing lightbox returns focus to invoking trigger');
+      // Slide 2 simulated multi-image Lightbox + light-dismiss + Close button
+      await p.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').nth(1).click();
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 2 dari 4');
+      await p.locator('#testimoni [data-kkg-carousel-slide]').nth(1).locator('[data-kkg-lightbox-open]').click();
+      assert.equal(await lb.evaluate(d=>d.open),true,'multi-image lightbox opens at '+width);
+      assert.equal(await lb.locator('[data-kkg-lightbox-pages]').isVisible(),true,'multi-image pagination shown');
+      const src1=await lb.locator('.kkg-lightbox-img').getAttribute('src');
+      await lb.locator('[data-kkg-lightbox-next]').click();
+      const src2=await lb.locator('.kkg-lightbox-img').getAttribute('src');
+      assert.notEqual(src1,src2,'next screenshot control cycles proof image');
+      assert.equal(src2.includes('chat-bunda-hidayati.webp'),true,'second screenshot loaded in multi-image lightbox');
+      await lb.locator('.kkg-lightbox-img').evaluate(async img=>{if(!img.complete) await new Promise(r=>img.addEventListener('load',r,{once:true}));});
+      if(width===1440) await p.screenshot({path:'artifacts/screenshots/desktop-lightbox-1440.png'});
+      else await p.screenshot({path:'artifacts/screenshots/mobile-lightbox-375.png'});
+      await p.mouse.click(5,5);
+      assert.equal(await lb.evaluate(d=>d.open),false,'light-dismiss outside dialog closes lightbox via closedby="any"');
+      await p.locator('#testimoni [data-kkg-carousel-slide]').nth(1).locator('[data-kkg-lightbox-open]').click();
+      await lb.locator('[data-kkg-lightbox-close]').click();
+      assert.equal(await lb.evaluate(d=>d.open),false,'close button closes lightbox');
+      await ctx.close();
+    }
+    // Simulated approved carousel clock-verified autoplay & WCAG 2.2.2 pause/resume suite
+    {
+      const aCtx=await browser.newContext({viewport:{width:1280,height:800}});
+      const ap=await aCtx.newPage();ap.on('pageerror',e=>errors.push(e.message));
+      await ap.clock.install();
+      await ap.goto('http://127.0.0.1:4173/?mode=active&testimonials=simulated');
+      const car=ap.locator('#testimoni [data-kkg-carousel]');
+      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','autoplay stays paused while #testimoni is off-screen');
+      await car.scrollIntoViewIfNeeded();
+      await ap.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel]')?.dataset.autoplayState==='running');
+      await car.hover();
+      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','hover pauses autoplay');
+      await ap.mouse.move(5,5);
+      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'running','mouse leave resumes autoplay');
+      await ap.clock.runFor(5650);
+      await ap.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot:nth-child(2)')?.getAttribute('aria-current')==='true');
+      const autoBtn=ap.locator('#testimoni [data-kkg-carousel-autoplay-toggle]');
+      assert.equal(await autoBtn.getAttribute('aria-pressed'),null,'Pause/Play toggle omits redundant aria-pressed');
+      await autoBtn.click();
+      assert.equal(await autoBtn.innerText(),'Putar','Pause click toggles label to Putar');
+      await ap.clock.runFor(6000);
+      assert.equal(await ap.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').nth(1).getAttribute('aria-current'),'true','paused carousel does not auto-advance after 6s');
+      await autoBtn.click();
+      assert.equal(await autoBtn.innerText(),'Jeda','Play click resumes autoplay');
+      await ap.mouse.move(5,5);
+      await ap.locator('#testimoni [data-kkg-carousel-next]').focus();
+      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','focus inside carousel pauses autoplay');
+      await ap.evaluate(()=>document.activeElement.blur());
+      await ap.locator('#testimoni [data-kkg-carousel-slide]').nth(1).locator('[data-kkg-lightbox-open]').click();
+      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','opening lightbox pauses autoplay');
+      await ap.keyboard.press('Escape');
+      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'paused','autoplay stays paused while opener retains focus after Escape');
+      await ap.evaluate(()=>document.activeElement.blur());
+      await ap.mouse.move(5,5);
+      assert.equal(await car.evaluate(el=>el.dataset.autoplayState),'running','autoplay resumes once pointer & focus leave after closing lightbox');
+      await aCtx.close();
+    }
+    {
+      const rCtx=await browser.newContext({viewport:{width:1280,height:800},reducedMotion:'reduce'});
+      const rp=await rCtx.newPage();rp.on('pageerror',e=>errors.push(e.message));
+      await rp.clock.install();
+      await rp.goto('http://127.0.0.1:4173/?mode=active&testimonials=simulated');
+      assert.equal(await rp.locator('#testimoni [data-kkg-carousel-autoplay-toggle]').isVisible(),false,'reduced motion hides autoplay control');
+      assert.equal(await rp.locator('#testimoni [data-kkg-carousel]').evaluate(el=>el.dataset.autoplayState),'paused','reduced motion keeps autoplay paused');
+      await rp.clock.runFor(6500);
+      assert.equal(await rp.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').first().getAttribute('aria-current'),'true','reduced motion stays on slide 1 after 6.5s');
+      await rCtx.close();
+    }
+    results.push({testimonialRedesign:'verified split layout, carousel looping/swipe/keyboard, 5500ms autoplay + pause/reducedMotion, multi-image native <dialog> lightbox, focus restore, and zero body.style.overflow mutation on desktop & mobile'});
     const htmlCache={};
     async function getModeHtml(consentMode){
       if(!htmlCache[consentMode])htmlCache[consentMode]=await (await fetch('http://127.0.0.1:4173/?consent='+encodeURIComponent(consentMode))).text();

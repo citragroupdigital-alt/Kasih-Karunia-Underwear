@@ -9,6 +9,26 @@ if ($consentArg !== 'disabled') {
     $GLOBALS['kkg_test_options']['kkg_settings']['privacy_reviewed'] = 1;
     $GLOBALS['kkg_test_options']['kkg_settings']['consent_mode'] = $consentArg;
 }
+$testimonialFixture = $argv[3] ?? '';
+if ($testimonialFixture === 'empty') {
+    add_filter('kkg_testimonials_items', static function () { return array(); });
+} elseif ($testimonialFixture === 'simulated') {
+    add_filter('kkg_testimonials_items', static function ($items) {
+        foreach ($items as $idx => &$item) {
+            $item['is_approved_for_publication'] = true;
+            if ($idx === 1) {
+                $item['order_highlight'] = '[Simulasi QA Multi-Foto] Produk LaParis';
+                $item['chat_proof_images'][] = array(
+                    'rel' => 'assets/testimonials/chat-bunda-hidayati.webp',
+                    'alt' => 'Simulasi halaman kedua bukti chat WhatsApp untuk pengujian multi-gambar',
+                    'width' => 460,
+                    'height' => 920,
+                );
+            }
+        }
+        return $items;
+    });
+}
 ?><!doctype html><html <?php echo kkg_seo_language_attributes('lang="en-US"'); ?>><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <?php kkg_seo_render_head(); ?><link rel="stylesheet" href="/assets/landing.css?v=<?php echo esc_attr(KKG_VERSION); ?>"></head><body class="kkg-page">
 <?php echo kkg_render(); ?>

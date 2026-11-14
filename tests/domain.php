@@ -71,26 +71,70 @@ check(count($ld['@graph'][3]['itemListElement']) === count(kkg_catalog_items()) 
 check(count($ld['@graph'][4]['mainEntity']) === count(kkg_faq_items()) && count(kkg_faq_items()) === 9, 'FAQPage schema matches 9 FAQ items');
 $ldJson = json_encode($ld);
 check(strpos($ldJson, 'Review') === false && strpos($ldJson, 'AggregateRating') === false, 'No Review or AggregateRating schema emitted');
-check(KKG_VERSION === '0.2.9', 'Plugin/asset version bumped to 0.2.9');
-check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.9') !== false, 'Main plugin header version 0.2.9');
-check(kkg_visible_testimonials(array('mode' => 'active')) === array(), 'Placeholders hidden on public active mode');
-check(kkg_visible_testimonials(array('mode' => 'off')) === array(), 'Placeholders hidden when mode off');
+check(KKG_VERSION === '0.2.10', 'Plugin/asset version bumped to 0.2.10');
+check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.10') !== false, 'Main plugin header version 0.2.10');
+check(kkg_visible_testimonials(array('mode' => 'active')) === array(), 'Unapproved real records hidden on public active mode');
+check(kkg_visible_testimonials(array('mode' => 'off')) === array(), 'Unapproved real records hidden when mode off');
+check(kkg_visible_testimonials(array('mode' => 'active'), array()) === array(), 'Empty dataset returns zero items');
+check(kkg_visible_testimonials(array('mode' => 'staging'), array()) === array(), 'Empty dataset returns zero items in staging too');
+check(kkg_testimonial_asset_url('../secrets.webp') === '', 'Path traversal rejected in testimonial asset helper');
+check(kkg_testimonial_asset_url('assets/testimonials/chat-pak-aan.webp') !== '', 'Valid redacted WebP resolves inside plugin directory');
+
 $GLOBALS['kkg_test_can_manage'] = false;
-check(kkg_visible_testimonials(array('mode' => 'staging')) === array(), 'Placeholders hidden from non-admins in staging');
+check(kkg_visible_testimonials(array('mode' => 'staging')) === array(), 'Unapproved records hidden from non-admins in staging');
 $GLOBALS['kkg_test_can_manage'] = true;
 $stagingTestimonials = kkg_visible_testimonials(array('mode' => 'staging'));
-check(count($stagingTestimonials) === 3, 'Three staging placeholders visible to admin');
+check(count($stagingTestimonials) === 4, 'Four redacted WhatsApp testimonial candidates visible to staging admin');
 foreach ($stagingTestimonials as $item) {
-    check(!empty($item['is_placeholder']), 'All staging items marked as placeholder');
+    check(!empty($item['is_verified']) && empty($item['is_placeholder']) && empty($item['is_approved_for_publication']), 'All redacted real candidates marked verified & awaiting approval');
+    check(!empty($item['chat_proof_images']) && count($item['chat_proof_images']) >= 1, 'Each redacted candidate includes valid proof image');
 }
+
+// Simulated approved fixture check (including multi-image proof and strict placeholder exclusion).
+$simApproved = array(
+    array(
+        'id' => 'sim-placeholder',
+        'name' => 'Fake Placeholder',
+        'category' => 'Mitra',
+        'quote' => 'Tidak boleh muncul.',
+        'chat_proof_images' => array(array('rel' => 'assets/testimonials/chat-pak-aan.webp')),
+        'is_verified' => true,
+        'is_approved_for_publication' => true,
+        'is_placeholder' => true,
+    ),
+    array(
+        'id' => 'sim-multi',
+        'name' => 'Simulasi Mitra Multi',
+        'category' => 'Distributor',
+        'quote' => 'Simulasi kutipan untuk pengujian.',
+        'order_highlight' => 'Simulasi Multi Halaman',
+        'chat_proof_images' => array(
+            array('rel' => 'assets/testimonials/chat-pak-aan.webp'),
+            array('rel' => 'assets/testimonials/chat-cv-anindiya.webp'),
+        ),
+        'is_verified' => true,
+        'is_approved_for_publication' => true,
+        'is_placeholder' => false,
+    ),
+);
+$visibleSim = kkg_visible_testimonials(array('mode' => 'active'), $simApproved);
+check(count($visibleSim) === 1 && $visibleSim[0]['id'] === 'sim-multi' && count($visibleSim[0]['chat_proof_images']) === 2, 'Active mode permits only verified approved non-placeholder items including multi-image proofs');
+
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging', 'phone' => '62895339293140');
 $stagingHtml = kkg_render();
 $posOrder = strpos($stagingHtml, 'data-section="order"');
 $posTesti = strpos($stagingHtml, 'data-section="testimonials"');
 $posFaq = strpos($stagingHtml, 'data-section="faq"');
 check($posOrder !== false && $posTesti !== false && $posFaq !== false && $posOrder < $posTesti && $posTesti < $posFaq, 'Testimonials placed between Order and FAQ');
-check(strpos($stagingHtml, 'Pak Agus') !== false && strpos($stagingHtml, 'Pak Budi') !== false && strpos($stagingHtml, 'Ibu Lala') !== false, 'Updated testimonial placeholder names rendered in staging');
-check(strpos($stagingHtml, 'CONTOH TESTIMONI') === false && strpos($stagingHtml, 'Pengalaman berbelanja grosir') === false && strpos($stagingHtml, 'mempersiapkan pesanan grosir') === false, 'Removed subheadlines and CONTOH TESTIMONI badge absent in staging HTML');
+check(strpos($stagingHtml, 'Cerita Mitra') !== false && strpos($stagingHtml, 'Testimoni Pelanggan') !== false, 'Updated section heading rendered');
+check(strpos($stagingHtml, 'data-kkg-lightbox') !== false && strpos($stagingHtml, 'closedby="any"') !== false && strpos($stagingHtml, 'data-kkg-proof-data') !== false, 'Lightbox dialog and proof JSON rendered');
+check(strpos($stagingHtml, 'CONTOH TESTIMONI') === false && strpos($stagingHtml, 'Pak Agus') === false, 'Old dummy placeholders removed');
+
+// Verify public active mode with currently unapproved data omits entire testimonials section cleanly.
+$GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'active', 'phone' => '62895339293140');
+$activePublicHtml = kkg_render();
+check(strpos($activePublicHtml, 'data-section="testimonials"') === false && strpos($activePublicHtml, 'data-kkg-lightbox') === false, 'Public active mode omits testimonials section completely until approved');
+$GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging', 'phone' => '62895339293140');
 $allSeoAndBodyText = strtolower($stagingHtml . "\n" . $ldJson . "\n" . kkg_seo_description() . "\n" . kkg_seo_title_text());
 foreach (array('1 lusin', '12 pcs', 'mulai kulakan', 'mulai 1', 'siap kulakan', 'kulakan grosir') as $forbiddenMoq) {
     check(strpos($allSeoAndBodyText, $forbiddenMoq) === false, 'Old MOQ/kulakan phrase absent everywhere: ' . $forbiddenMoq);

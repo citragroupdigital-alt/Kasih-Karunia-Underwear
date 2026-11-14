@@ -114,39 +114,104 @@ $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
     </div>
 </section>
 <?php if ($testimonials): ?>
+<?php
+$kkg_lightbox_payload = array();
+foreach ($testimonials as $item) {
+    $kkg_lightbox_payload[] = array(
+        'id' => $item['id'],
+        'name' => $item['name'],
+        'category' => $item['category'],
+        'order_highlight' => $item['order_highlight'],
+        'images' => $item['chat_proof_images'],
+    );
+}
+$total_testimonials = count($testimonials);
+?>
 <section class="kkg-section kkg-testimonials" id="testimoni" data-section="testimonials" aria-labelledby="kkg-testimonials-title">
     <div class="kkg-container">
         <div class="kkg-center kkg-testimonials-head">
             <p class="kkg-eyebrow">TESTIMONI MITRA</p>
-            <h2 id="kkg-testimonials-title">Apa Kata <em>Mitra Kami?</em></h2>
+            <h2 id="kkg-testimonials-title">Cerita Mitra &amp; <em>Testimoni Pelanggan</em></h2>
+            <p class="kkg-testimonials-sub">Pengalaman dan ulasan pelanggan yang telah mempercayakan kebutuhan stok usaha mereka kepada KK Underwear.</p>
         </div>
-        <div class="kkg-carousel" data-kkg-carousel data-carousel-label="Testimoni Mitra" data-track-label="Daftar testimoni mitra">
+        <div class="kkg-carousel kkg-carousel--testimonials" data-kkg-carousel data-carousel-scope="always" data-carousel-autoplay="5500" data-carousel-label="Testimoni Mitra" data-track-label="Daftar testimoni mitra">
             <div class="kkg-carousel-controls" data-kkg-carousel-controls hidden>
-                <button type="button" class="kkg-carousel-btn" data-kkg-carousel-prev aria-label="Testimoni sebelumnya"><?php echo kkg_icon('chevron-left', 20); ?></button>
-                <button type="button" class="kkg-carousel-btn" data-kkg-carousel-next aria-label="Testimoni berikutnya"><?php echo kkg_icon('chevron-right', 20); ?></button>
+                <button type="button" class="kkg-carousel-btn kkg-carousel-btn--prev" data-kkg-carousel-prev aria-label="Testimoni sebelumnya"><?php echo kkg_icon('chevron-left', 20); ?></button>
+                <button type="button" class="kkg-carousel-btn kkg-carousel-btn--next" data-kkg-carousel-next aria-label="Testimoni berikutnya"><?php echo kkg_icon('chevron-right', 20); ?></button>
             </div>
             <div class="kkg-testimonials-grid kkg-carousel-track" data-kkg-carousel-track>
-            <?php $total_testimonials = count($testimonials); foreach ($testimonials as $t_index => $item): ?>
-                <article class="kkg-testimonial-card" data-kkg-carousel-slide data-slide-label="<?php echo esc_attr(($t_index + 1) . ' dari ' . $total_testimonials); ?>" data-marker-name="<?php echo esc_attr('Pilih testimoni ' . $item['name']); ?>">
-                    <div class="kkg-testimonial-top">
-                        <span class="kkg-testimonial-quote-icon" aria-hidden="true"><?php echo kkg_icon('quote', 18); ?></span>
-                    </div>
-                    <blockquote class="kkg-testimonial-content">
-                        <p>&ldquo;<?php echo esc_html($item['quote']); ?>&rdquo;</p>
-                    </blockquote>
-                    <div class="kkg-testimonial-author">
-                        <span class="kkg-testimonial-avatar" aria-hidden="true"><?php echo !empty($item['initials']) ? esc_html($item['initials']) : kkg_icon('user', 18); ?></span>
-                        <div class="kkg-testimonial-meta">
-                            <h3><?php echo esc_html($item['name']); ?></h3>
-                            <p><?php echo esc_html($item['category']); ?></p>
+            <?php foreach ($testimonials as $t_index => $item): ?>
+                <?php
+                $proofs = $item['chat_proof_images'];
+                $lead_proof = $proofs[0];
+                $proof_count = count($proofs);
+                ?>
+                <div class="kkg-testimonial-slide" data-kkg-carousel-slide data-slide-label="<?php echo esc_attr(($t_index + 1) . ' dari ' . $total_testimonials); ?>" data-marker-name="<?php echo esc_attr('Pilih testimoni ' . $item['name']); ?>">
+                <article class="kkg-testimonial-card kkg-testimonial-card--split">
+                    <div class="kkg-testimonial-copy">
+                        <div class="kkg-testimonial-top">
+                            <span class="kkg-testimonial-quote-icon" aria-hidden="true"><?php echo kkg_icon('quote', 18); ?></span>
+                            <?php if (empty($item['is_approved_for_publication']) && !empty($item['is_verified'])): ?>
+                                <span class="kkg-testimonial-stage-badge">Preview Staging · Menunggu Persetujuan</span>
+                            <?php endif; ?>
+                        </div>
+                        <blockquote class="kkg-testimonial-content">
+                            <p>&ldquo;<?php echo esc_html($item['quote']); ?>&rdquo;</p>
+                        </blockquote>
+                        <div class="kkg-testimonial-author">
+                            <span class="kkg-testimonial-avatar" aria-hidden="true"><?php echo !empty($item['initials']) ? esc_html($item['initials']) : kkg_icon('user', 18); ?></span>
+                            <div class="kkg-testimonial-meta">
+                                <h3><?php echo esc_html($item['name']); ?></h3>
+                                <p><?php echo esc_html($item['category']); ?></p>
+                            </div>
                         </div>
                     </div>
+                    <div class="kkg-testimonial-proof">
+                        <button
+                            type="button"
+                            class="kkg-chat-preview"
+                            data-kkg-lightbox-open
+                            data-proof-index="<?php echo esc_attr((string) $t_index); ?>"
+                            aria-label="<?php echo esc_attr('Perbesar bukti chat WhatsApp dari ' . $item['name'] . ($proof_count > 1 ? ' (' . $proof_count . ' halaman)' : '')); ?>"
+                        >
+                            <span class="kkg-chat-preview-header">
+                                <span class="kkg-chat-verified-badge">Bukti Chat WhatsApp Asli</span>
+                                <?php if ($proof_count > 1): ?>
+                                    <span class="kkg-chat-page-pill"><?php echo esc_html($proof_count . ' Foto'); ?></span>
+                                <?php endif; ?>
+                            </span>
+                            <span class="kkg-chat-screen">
+                                <img
+                                    src="<?php echo esc_url($lead_proof['url']); ?>"
+                                    alt="<?php echo esc_attr($lead_proof['alt']); ?>"
+                                    width="<?php echo esc_attr((string) $lead_proof['width']); ?>"
+                                    height="<?php echo esc_attr((string) $lead_proof['height']); ?>"
+                                    loading="lazy"
+                                    decoding="async"
+                                    style="object-position: <?php echo esc_attr($item['preview_position']); ?>;"
+                                >
+                                <span class="kkg-chat-zoom-hint">
+                                    <?php echo kkg_testimonial_icon('zoom-in'); ?>
+                                    <span>Klik untuk Memperbesar</span>
+                                </span>
+                            </span>
+                        </button>
+                    </div>
                 </article>
+                </div>
             <?php endforeach; ?>
             </div>
             <p class="kkg-sr-only" role="status" aria-live="polite" data-kkg-carousel-status></p>
-            <nav class="kkg-carousel-markers" aria-label="Pilih testimoni mitra" data-kkg-carousel-markers hidden></nav>
+            <div class="kkg-carousel-footer">
+                <nav class="kkg-carousel-markers" aria-label="Pilih testimoni mitra" data-kkg-carousel-markers hidden></nav>
+                <button type="button" class="kkg-carousel-autoplay-btn" data-kkg-carousel-autoplay-toggle aria-label="Jeda putar otomatis testimoni" hidden>
+                    <span data-kkg-autoplay-icon="pause" aria-hidden="true"><?php echo kkg_testimonial_icon('pause'); ?></span>
+                    <span data-kkg-autoplay-icon="play" aria-hidden="true" hidden><?php echo kkg_testimonial_icon('play'); ?></span>
+                    <span data-kkg-autoplay-label>Jeda</span>
+                </button>
+            </div>
         </div>
+        <script type="application/json" data-kkg-proof-data><?php echo wp_json_encode($kkg_lightbox_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
     </div>
 </section>
 <?php endif; ?>
@@ -198,5 +263,26 @@ $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
     <p class="kkg-dialog-note">Analytics hanya diteruskan ke integrasi yang telah diaudit. Halaman ini tidak memasang tag analitik sendiri.</p>
     <div class="kkg-dialog-actions"><button type="button" class="kkg-btn-outline" data-kkg-close-secondary>Tutup</button><button type="button" class="kkg-btn-solid" data-kkg-save>Simpan Pilihan</button></div>
 </dialog>
+<?php if ($testimonials): ?>
+<dialog class="kkg-lightbox" closedby="any" aria-labelledby="kkg-lightbox-title" data-kkg-lightbox>
+    <div class="kkg-lightbox-surface">
+        <button type="button" class="kkg-lightbox-close" data-kkg-lightbox-close aria-label="Tutup tampilan bukti chat"><?php echo kkg_icon('x', 20); ?></button>
+        <div class="kkg-lightbox-head">
+            <span class="kkg-lightbox-badge">Bukti Chat WhatsApp Asli</span>
+            <h3 id="kkg-lightbox-title" data-kkg-lightbox-name></h3>
+            <p class="kkg-lightbox-sub" data-kkg-lightbox-meta></p>
+        </div>
+        <div class="kkg-lightbox-stage">
+            <button type="button" class="kkg-lightbox-nav kkg-lightbox-nav--prev" data-kkg-lightbox-prev aria-label="Foto bukti chat sebelumnya" hidden><?php echo kkg_icon('chevron-left', 18); ?></button>
+            <figure class="kkg-lightbox-figure" data-kkg-lightbox-figure></figure>
+            <button type="button" class="kkg-lightbox-nav kkg-lightbox-nav--next" data-kkg-lightbox-next aria-label="Foto bukti chat berikutnya" hidden><?php echo kkg_icon('chevron-right', 18); ?></button>
+        </div>
+        <div class="kkg-lightbox-pages" data-kkg-lightbox-pages hidden></div>
+        <form method="dialog" class="kkg-lightbox-foot">
+            <button type="submit" class="kkg-btn-outline kkg-lightbox-dismiss">Tutup Bukti Chat</button>
+        </form>
+    </div>
+</dialog>
+<?php endif; ?>
 <p class="kkg-toast" aria-live="polite" role="status" data-kkg-status hidden></p>
 </div>
