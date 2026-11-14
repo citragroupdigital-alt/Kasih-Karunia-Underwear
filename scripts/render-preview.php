@@ -37,6 +37,22 @@ if ($testimonialFixture === 'empty') {
     });
 }
 $invoiceFixture = $argv[4] ?? '';
+$releaseFixture = $argv[5] ?? '';
+if ($releaseFixture === 'ready') {
+    $GLOBALS['kkg_test_options']['kkg_settings'] = array_merge(
+        $GLOBALS['kkg_test_options']['kkg_settings'],
+        array(
+            'consent_mode' => $consentArg !== 'disabled' ? $consentArg : 'external',
+            'privacy_reviewed' => 1,
+            'claims_reviewed' => 1,
+            'assets_reviewed' => 1,
+            'release_reviewed' => 1,
+        )
+    );
+    $GLOBALS['kkg_test_options']['wp_page_for_privacy_policy'] = 5010;
+    $GLOBALS['kkg_test_post_statuses'][5010] = 'publish';
+    $GLOBALS['kkg_test_privacy_url'] = 'https://example.test/kebijakan-privasi/';
+}
 if ($invoiceFixture === 'empty') {
     add_filter('kkg_invoices_items', static function () { return array(); });
 } elseif ($invoiceFixture === 'unapproved') {

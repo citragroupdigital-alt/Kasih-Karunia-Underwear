@@ -79,7 +79,9 @@ $invoices = kkg_visible_invoices(isset($s) && is_array($s) ? $s : null);
             </div>
             <div class="kkg-product-grid kkg-carousel-track" data-kkg-carousel-track>
             <?php $total_categories = count($categories); foreach ($categories as $index => $category): ?>
-                <article class="kkg-product" data-kkg-carousel-slide data-slide-label="<?php echo esc_attr(($index + 1) . ' dari ' . $total_categories); ?>" data-marker-name="<?php echo esc_attr('Pilih ' . $category['name']); ?>"><div class="kkg-product-image"><?php kkg_image($category['key'], $category['name'], false, $category['alt']); ?></div><div class="kkg-product-body"><h3><?php echo esc_html($category['name']); ?></h3><p class="kkg-product-desc"><?php echo esc_html($category['description']); ?></p></div></article>
+                <div class="kkg-product-slide" data-kkg-carousel-slide data-slide-label="<?php echo esc_attr(($index + 1) . ' dari ' . $total_categories); ?>" data-marker-name="<?php echo esc_attr('Pilih ' . $category['name']); ?>">
+                <article class="kkg-product"><div class="kkg-product-image"><?php kkg_image($category['key'], $category['name'], false, $category['alt']); ?></div><div class="kkg-product-body"><h3><?php echo esc_html($category['name']); ?></h3><p class="kkg-product-desc"><?php echo esc_html($category['description']); ?></p></div></article>
+                </div>
             <?php endforeach; ?>
             </div>
             <p class="kkg-sr-only" role="status" aria-live="polite" data-kkg-carousel-status></p>
@@ -175,7 +177,6 @@ $total_testimonials = count($testimonials);
                             class="kkg-chat-preview"
                             data-kkg-lightbox-open
                             data-proof-index="<?php echo esc_attr((string) $t_index); ?>"
-                            aria-label="<?php echo esc_attr('Perbesar bukti chat WhatsApp dari ' . $item['name'] . ($proof_count > 1 ? ' (' . $proof_count . ' halaman)' : '')); ?>"
                         >
                             <span class="kkg-chat-preview-header">
                                 <span class="kkg-chat-verified-badge">Bukti Chat WhatsApp Asli</span>

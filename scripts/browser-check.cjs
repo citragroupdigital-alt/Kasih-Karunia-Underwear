@@ -181,6 +181,33 @@ const path = require('node:path');
       assert.equal(await page.locator('#produk [data-kkg-carousel-markers]').isVisible(), isMobile, '#produk carousel markers visibility at ' + width);
       assert.equal(await page.locator('#testimoni [data-kkg-carousel-controls]').isVisible(), true, '#testimoni carousel controls visible on desktop and mobile at ' + width);
       assert.equal(await page.locator('#testimoni [data-kkg-carousel-markers]').isVisible(), true, '#testimoni carousel markers visible on desktop and mobile at ' + width);
+      const slideSemantics = await page.evaluate((mobileView) => {
+        const articlesWithBadRole = Array.from(document.querySelectorAll('article')).filter(el => el.hasAttribute('role') || el.hasAttribute('aria-roledescription'));
+        const slideWrappers = Array.from(document.querySelectorAll('[data-kkg-carousel-slide]'));
+        const nonDivSlides = slideWrappers.filter(el => el.tagName !== 'DIV');
+        const desktopBadProdukRoles = !mobileView
+          ? Array.from(document.querySelectorAll('#produk [data-kkg-carousel-slide], #bukti-transaksi [data-kkg-carousel-slide]')).filter(el => el.hasAttribute('role') || el.hasAttribute('aria-roledescription'))
+          : [];
+        const activeSlideBadRoles = ['#testimoni', ...(mobileView ? ['#produk', '#bukti-transaksi'] : [])].flatMap(sel =>
+          Array.from(document.querySelectorAll(sel + ' [data-kkg-carousel-slide]')).filter(el => el.getAttribute('role') !== 'group' || el.getAttribute('aria-roledescription') !== 'slide' || !el.getAttribute('aria-label'))
+        );
+        const prodCards = Array.from(document.querySelectorAll('#produk .kkg-product')).map(el => el.getBoundingClientRect());
+        const desktopRowAligned = mobileView ? true : prodCards.every(r => Math.abs(r.top - prodCards[0].top) <= 2 && Math.abs(r.height - prodCards[0].height) <= 2 && r.width > 120);
+        return {
+          articlesWithBadRole: articlesWithBadRole.length,
+          nonDivSlides: nonDivSlides.length,
+          desktopBadProdukRoles: desktopBadProdukRoles.length,
+          activeSlideBadRoles: activeSlideBadRoles.length,
+          desktopRowAligned,
+        };
+      }, isMobile);
+      assert.deepEqual(slideSemantics, {
+        articlesWithBadRole: 0,
+        nonDivSlides: 0,
+        desktopBadProdukRoles: 0,
+        activeSlideBadRoles: 0,
+        desktopRowAligned: true,
+      }, 'valid ARIA carousel slide wrappers & aligned product cards at ' + width);
       if (!isMobile) {
         const heroImgs = await page.evaluate(() => Array.from(document.querySelectorAll('.kkg-hero-photo')).map(el => ({ ok: el.complete && el.naturalWidth === 1200 && el.naturalHeight === 1200 })));
         assert.equal(heroImgs.length, 1, 'hero photo rendered');
@@ -370,6 +397,14 @@ const path = require('node:path');
       const emptyRes=await page.goto('http://127.0.0.1:4173/?testimonials=empty');
       assert.equal(emptyRes.status(),200);
       assert.equal(await page.locator('[data-section="testimonials"]').count(),0,'empty dataset hides testimonials even in staging');
+      const blockedActiveRobots=await page.goto('http://127.0.0.1:4173/?mode=active').then(()=>page.evaluate(()=>Array.from(document.querySelectorAll('meta[name="robots"]')).map(m=>m.getAttribute('content'))));
+      assert.deepEqual(blockedActiveRobots,['noindex, nofollow'],'active mode with release blockers remains single noindex, nofollow');
+      const readyActiveRes=await page.goto('http://127.0.0.1:4173/?mode=active&release=ready');
+      assert.equal(readyActiveRes.status(),200);
+      const readyRobots=await page.evaluate(()=>Array.from(document.querySelectorAll('meta[name="robots"]')).map(m=>m.getAttribute('content')));
+      assert.equal(readyRobots.length===1 && readyRobots[0].startsWith('index, follow') && !readyRobots[0].includes('noindex'),true,'active mode without blockers renders single index, follow meta robots');
+      const readyStagingRobots=await page.goto('http://127.0.0.1:4173/?mode=staging&release=ready').then(()=>page.evaluate(()=>Array.from(document.querySelectorAll('meta[name="robots"]')).map(m=>m.getAttribute('content'))));
+      assert.deepEqual(readyStagingRobots,['noindex, nofollow'],'staging mode keeps single noindex, nofollow even when release flags reviewed');
     }
     results.push({ activeAndEmptyGating: 'active public mode renders 3 approved testimonials without staging badge, while unapproved/empty datasets omit section cleanly across desktop and mobile' });
     // Simulated approved carousel interactive checks (live scroll/swipe/keyboard, single & multi-image lightbox, focus restore, sticky hide, no body overflow lock).

@@ -13,8 +13,10 @@ const server = http.createServer((req, res) => {
       const consentArg = ['standalone', 'external'].includes(reqUrl.searchParams.get('consent')) ? reqUrl.searchParams.get('consent') : 'disabled';
       const fixtureArg = ['simulated', 'empty', 'unapproved'].includes(reqUrl.searchParams.get('testimonials')) ? reqUrl.searchParams.get('testimonials') : 'default';
       const invoiceArg = ['1', '2', '3', '4', 'empty', 'unapproved', 'missing_image'].includes(reqUrl.searchParams.get('invoices')) ? reqUrl.searchParams.get('invoices') : '';
+      const releaseArg = reqUrl.searchParams.get('release') === 'ready' ? 'ready' : '';
       const args = [path.join(__dirname, 'render-preview.php'), modeArg, consentArg, fixtureArg];
-      if (invoiceArg) args.push(invoiceArg);
+      if (invoiceArg || releaseArg) { args.push(invoiceArg || 'default'); }
+      if (releaseArg) { args.push(releaseArg); }
       const html = execFileSync(php, args, { encoding: 'utf8' });
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(html);
     } catch (_) { res.writeHead(500); res.end('PHP preview failed'); }

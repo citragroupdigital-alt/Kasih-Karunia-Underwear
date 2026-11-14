@@ -71,8 +71,8 @@ check(count($ld['@graph'][3]['itemListElement']) === count(kkg_catalog_items()) 
 check(count($ld['@graph'][4]['mainEntity']) === count(kkg_faq_items()) && count(kkg_faq_items()) === 9, 'FAQPage schema matches 9 FAQ items');
 $ldJson = json_encode($ld);
 check(strpos($ldJson, 'Review') === false && strpos($ldJson, 'AggregateRating') === false, 'No Review or AggregateRating schema emitted');
-check(KKG_VERSION === '0.2.13', 'Plugin/asset version bumped to 0.2.13');
-check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.13') !== false, 'Main plugin header version 0.2.13');
+check(KKG_VERSION === '0.2.14', 'Plugin/asset version bumped to 0.2.14');
+check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.14') !== false, 'Main plugin header version 0.2.14');
 check(kkg_visible_testimonials(array('mode' => 'active'), array()) === array(), 'Empty dataset returns zero items');
 check(kkg_visible_testimonials(array('mode' => 'staging'), array()) === array(), 'Empty dataset returns zero items in staging too');
 check(kkg_testimonial_asset_url('../secrets.webp') === '', 'Path traversal rejected in testimonial asset helper');
@@ -218,14 +218,42 @@ kkg_seo_page_isolation();
 check(!empty($GLOBALS['kkg_test_removed_actions']) && !empty($GLOBALS['kkg_test_added_filters']), 'Isolation hook isolates SEO plugins on /grosir/');
 $removedHooks = array_map(static function ($item) { return $item[1]; }, $GLOBALS['kkg_test_removed_actions']);
 check(in_array('_wp_render_title_tag', $removedHooks, true), 'Isolation removes core _wp_render_title_tag to prevent duplicate <title>');
+check(in_array('wp_robots', $removedHooks, true) && in_array('noindex', $removedHooks, true), 'Isolation removes core wp_robots and legacy noindex on /grosir/');
 $registeredFilters = array();
 foreach ($GLOBALS['kkg_test_added_filters'] as $entry) { $registeredFilters[$entry[0]] = $entry[1]; }
-foreach (array('wpseo_frontend_presenter_classes', 'wpseo_frontend_presenters', 'wpseo_json_ld_output', 'wpseo_schema_graph') as $emptyHook) {
-    check(($registeredFilters[$emptyHook] ?? '') === '__return_empty_array' && call_user_func($registeredFilters[$emptyHook], array('Mock_Presenter')) === array(), 'Yoast array hook cleared on /grosir/: ' . $emptyHook);
+foreach (array('wp_robots', 'wpseo_robots_array', 'wpseo_frontend_presenter_classes', 'wpseo_frontend_presenters', 'wpseo_json_ld_output', 'wpseo_schema_graph') as $emptyHook) {
+    check(($registeredFilters[$emptyHook] ?? '') === '__return_empty_array' && call_user_func($registeredFilters[$emptyHook], array('noindex' => true, 'nofollow' => true)) === array(), 'WP/Yoast robots & array hook cleared on /grosir/: ' . $emptyHook);
 }
 foreach (array('wpseo_locale', 'wpseo_opengraph_type', 'wpseo_opengraph_site_name', 'wpseo_opengraph_title') as $falseHook) {
     check(($registeredFilters[$falseHook] ?? '') === '__return_false' && call_user_func($registeredFilters[$falseHook], 'en_US') === false, 'Yoast scalar OG hook suppressed on /grosir/: ' . $falseHook);
 }
+// Robots meta & X-Robots-Tag checks across off / staging / active-with-blockers / active-without-blockers.
+$GLOBALS['kkg_test_is_page'] = false;
+check(kkg_seo_filter_headers(array('X-Robots-Tag' => 'noindex, nofollow')) === array('X-Robots-Tag' => 'noindex, nofollow'), 'X-Robots-Tag filter leaves other pages untouched');
+check(kkg_seo_robots(array('mode' => 'off')) === 'noindex, nofollow', 'Mode off remains noindex');
+$GLOBALS['kkg_test_is_page'] = true;
+check(kkg_seo_filter_headers(array('x-robots-tag' => 'index', 'Cache-Control' => 'max-age=60')) === array('Cache-Control' => 'max-age=60', 'X-Robots-Tag' => 'noindex, nofollow'), 'Staging enforces non-conflicting X-Robots-Tag noindex');
+$GLOBALS['kkg_test_privacy_url'] = 'https://example.test/kebijakan-privasi/';
+$GLOBALS['kkg_test_post_statuses'][5010] = 'publish';
+$GLOBALS['kkg_test_options']['wp_page_for_privacy_policy'] = 5010;
+$GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'active', 'page_id' => 42, 'phone' => '62895339293140', 'consent_mode' => 'external', 'privacy_reviewed' => 1, 'claims_reviewed' => 0, 'assets_reviewed' => 1, 'release_reviewed' => 1);
+check(kkg_seo_robots() === 'noindex, nofollow', 'Active mode with release blocker keeps noindex, nofollow');
+ob_start();
+kkg_seo_wp_head();
+$blockedHead = ob_get_clean();
+check(substr_count($blockedHead, '<meta name="robots"') === 1 && strpos($blockedHead, 'content="noindex, nofollow"') !== false, 'Active with blocker renders single noindex meta robots');
+$GLOBALS['kkg_test_options']['kkg_settings']['claims_reviewed'] = 1;
+check(kkg_release_blockers(kkg_settings()) === array(), 'Zero blockers verified for indexable active mode');
+check(strpos(kkg_seo_robots(), 'index, follow') === 0 && strpos(kkg_seo_robots(), 'noindex') === false, 'Active mode without blockers returns index, follow');
+ob_start();
+kkg_seo_wp_head();
+$indexHead = ob_get_clean();
+check(substr_count($indexHead, '<meta name="robots"') === 1 && strpos($indexHead, 'content="index, follow') !== false && strpos($indexHead, 'noindex') === false, 'Active without blockers renders single index, follow meta robots');
+check(kkg_seo_filter_headers(array('X-Robots-Tag' => 'noindex, nofollow', 'Vary' => 'Accept-Encoding')) === array('Vary' => 'Accept-Encoding'), 'Active without blockers removes conflicting X-Robots-Tag');
+$jupiterHead = '<script id="Cookiebot" src="https://consent.cookiebot.com/uc.js"></script><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0" /><script>var t="<meta name=\'viewport\' content=\'keep\'>";</script><meta name="robots" content="index, follow">';
+$cleanHead = kkg_seo_sanitize_wp_head($jupiterHead);
+check(strpos($cleanHead, 'user-scalable=0') === false && strpos($cleanHead, '<meta charset="UTF-8"') === false && strpos($cleanHead, 'Cookiebot') !== false && strpos($cleanHead, 'var t=') !== false && strpos($cleanHead, 'content="index, follow"') !== false, 'Head sanitizer strips theme duplicate charset/viewport while keeping Cookiebot, scripts, and SEO meta');
+unset($GLOBALS['kkg_test_privacy_url'], $GLOBALS['kkg_test_post_statuses'], $GLOBALS['kkg_test_options']['wp_page_for_privacy_policy']);
 unset($GLOBALS['kkg_test_permalinks'], $GLOBALS['kkg_test_attachments'], $GLOBALS['kkg_test_is_page'], $GLOBALS['kkg_test_removed_actions'], $GLOBALS['kkg_test_added_filters']);
 // PRIV-01 & PRIV-05: Privacy Policy status/identity guards and premature approval warning.
 $baseActive = array_merge(kkg_settings(), array('mode' => 'active', 'page_id' => 5008, 'phone' => '62895339293140', 'consent_mode' => 'standalone',

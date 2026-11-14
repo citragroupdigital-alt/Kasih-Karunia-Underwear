@@ -254,10 +254,37 @@ function kkg_seo_wp_head() {
     }
 }
 
+/** Prevent stale or conflicting X-Robots-Tag headers solely on /grosir/. */
+function kkg_seo_filter_headers($headers) {
+    if (!kkg_is_page() || !is_array($headers)) { return $headers; }
+    foreach (array_keys($headers) as $header_name) {
+        if (strtolower((string) $header_name) === 'x-robots-tag') {
+            unset($headers[$header_name]);
+        }
+    }
+    if (kkg_seo_robots() === 'noindex, nofollow') {
+        $headers['X-Robots-Tag'] = 'noindex, nofollow';
+    }
+    return $headers;
+}
+
+/** Remove duplicate charset/viewport meta tags (e.g., theme user-scalable=0) emitted in wp_head() solely on /grosir/. */
+function kkg_seo_sanitize_wp_head($html) {
+    $html = (string) $html;
+    if ($html === '') { return ''; }
+    return preg_replace_callback('/<(script|style)\b[^>]*>[\s\S]*?<\/\1>|<meta\b[^>]*>/i', function ($m) {
+        if (!empty($m[1])) { return $m[0]; }
+        return preg_match('/\b(?:charset\s*=|name\s*=\s*["\']viewport["\'])/i', $m[0]) ? '' : $m[0];
+    }, $html) ?? $html;
+}
+
 /** Prevent duplicate head/schema output from global SEO plugins solely on /grosir/. */
 function kkg_seo_page_isolation() {
     if (!kkg_is_page()) { return; }
     remove_action('wp_head', '_wp_render_title_tag', 1);
+    remove_action('wp_head', 'wp_robots', 1);
+    remove_action('wp_head', 'wp_robots');
+    remove_action('wp_head', 'noindex', 1);
     remove_action('wp_head', 'rel_canonical');
     foreach (array('wpseo_title', 'wpseo_metadesc', 'wpseo_canonical', 'wpseo_robots',
         'wpseo_locale', 'wpseo_opengraph_type', 'wpseo_opengraph_site_name',
@@ -267,8 +294,8 @@ function kkg_seo_page_isolation() {
         'rank_math/frontend/robots') as $hook) {
         add_filter($hook, '__return_false', 999);
     }
-    // Strip Yoast 14+ presenters (og:locale, og:type, og:site_name, Twitter, Schema) on /grosir/ only.
-    foreach (array('wpseo_frontend_presenter_classes', 'wpseo_frontend_presenters',
+    // Strip WP core wp_robots & Yoast/RankMath 14+ presenters/robots arrays solely on /grosir/.
+    foreach (array('wp_robots', 'wpseo_robots_array', 'wpseo_frontend_presenter_classes', 'wpseo_frontend_presenters',
         'wpseo_json_ld_output', 'wpseo_schema_graph', 'rank_math/json_ld') as $hook) {
         add_filter($hook, '__return_empty_array', 999);
     }

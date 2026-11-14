@@ -376,6 +376,7 @@
       track.setAttribute('role', 'group');
       track.setAttribute('aria-label', carousel.dataset.trackLabel || 'Daftar slide');
       slides.forEach(slide => {
+        if (!/^(DIV|LI)$/.test(slide.tagName)) return;
         slide.setAttribute('role', 'group');
         slide.setAttribute('aria-roledescription', 'slide');
         if (slide.dataset.slideLabel) slide.setAttribute('aria-label', slide.dataset.slideLabel);

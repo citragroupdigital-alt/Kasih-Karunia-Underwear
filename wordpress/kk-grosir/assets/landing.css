@@ -552,7 +552,13 @@
     gap: 18px
 }
 
+.kkg-product-slide {
+    min-width: 0;
+    display: flex
+}
+
 .kkg-product {
+    width: 100%;
     border: 1px solid var(--kkg-line);
     border-radius: var(--kkg-radius);
     background: #fff;
