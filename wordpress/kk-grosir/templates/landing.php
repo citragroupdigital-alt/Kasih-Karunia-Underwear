@@ -12,7 +12,7 @@ $usps = array(
 );
 $steps = array(
     array('Minta Katalog Grosir', 'Hubungi Customer Service melalui WhatsApp.', 'message-circle'),
-    array('Pilih Produk', 'Lihat katalog, informasi harga grosir, dan minimum pembelian 1 lusin.', 'shopping-bag'),
+    array('Pilih Produk', 'Lihat katalog dan informasi harga grosir. Minimum pembelian 50 lusin.', 'shopping-bag'),
     array('Konfirmasi Pesanan', 'CS membantu memastikan detail pesanan dan pembayaran.', 'circle-check'),
     array('Pengiriman Barang', 'Pesanan diproses untuk dikirim dari Surabaya sesuai ketentuan ekspedisi.', 'truck'),
 );
@@ -38,14 +38,14 @@ $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
     <div class="kkg-container kkg-hero-grid">
         <div class="kkg-hero-copy">
             <p class="kkg-eyebrow kkg-badge"><span class="kkg-dot" aria-hidden="true"></span> SUPPLIER &amp; DISTRIBUTOR PAKAIAN DALAM · SURABAYA</p>
-            <h1 id="kkg-title">Kulakan Grosir Pakaian Dalam <br>Mulai <em>1 Lusin!</em></h1>
-            <p class="kkg-intro">CV. Kasih Karunia melayani grosir pakaian dalam wanita dan pria dari toko serta gudang di Surabaya sebagai supplier pakaian dalam untuk toko, agen pakaian dalam, dan reseller seluruh Indonesia. Tersedia pilihan bra (BH) wanita, celana dalam, kaos kaki, serta handuk mulai 1 lusin.</p>
+            <h1 id="kkg-title">Grosir Pakaian Dalam untuk Stok Usaha <br>Mulai <em>50 Lusin!</em></h1>
+            <p class="kkg-intro">CV. Kasih Karunia melayani kebutuhan grosir pakaian dalam wanita dan pria, kaos kaki, serta handuk untuk pemilik toko, agen, dan distributor. Minimum pembelian 50 lusin, dengan layanan pemesanan volume besar untuk kebutuhan usaha di seluruh Indonesia.</p>
             <div class="kkg-hero-cta" data-kkg-hero-cta><?php kkg_cta('hero'); ?></div>
             <p class="kkg-support"><?php echo kkg_icon('truck', 16); ?> Melayani Pengiriman ke Seluruh Indonesia</p>
         </div>
         <div class="kkg-hero-art">
             <div class="kkg-hero-image"><?php kkg_image('hero', 'Pilihan produk grosir KK Underwear', true, 'Pilihan produk grosir pakaian dalam KK Underwear Surabaya'); ?></div>
-            <div class="kkg-moq"><span>Mulai dari</span><strong>12 <small>pcs</small></strong><span>1 lusin untuk mulai kulakan</span></div>
+            <div class="kkg-moq"><span class="kkg-moq-label">MINIMUM ORDER</span><strong>50 <small>LUSIN</small></strong><span>Khusus pembelian grosir dalam jumlah besar</span></div>
         </div>
     </div>
 </section>
@@ -97,7 +97,7 @@ $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
                 <ol class="kkg-mission">
                     <li>Selalu berinovasi mengikuti tren fashion masyarakat.</li><li>Mengutamakan kepuasan dan pelayanan terbaik untuk pelanggan.</li><li>Membangun tempat kerja yang sehat, bertumbuh dan berkembang untuk karyawan.</li><li>Berinovasi menciptakan terobosan teknologi baru dalam segi fashion.</li><li>Menciptakan sistem pelayanan yang efisien dan memberikan pengalaman yang menyenangkan.</li>
                 </ol>
-                <div class="kkg-about-location"><?php echo kkg_icon('map-pin', 18); ?><p><strong>Toko &amp; Gudang Surabaya:</strong> Distributor pakaian dalam Surabaya untuk toko, agen, dan reseller se-Indonesia.</p></div>
+                <div class="kkg-about-location"><?php echo kkg_icon('map-pin', 18); ?><p><strong>Toko &amp; Gudang Surabaya:</strong> Distributor pakaian dalam Surabaya untuk toko, agen, dan mitra grosir volume besar se-Indonesia.</p></div>
             </div>
         </div>
         <figure class="kkg-about-image"><?php kkg_image('about', 'Profil CV. Kasih Karunia', false, 'Toko dan gudang CV. Kasih Karunia distributor pakaian dalam Surabaya'); ?><figcaption>CV. Kasih Karunia<span>KK UNDERWEAR · SURABAYA</span></figcaption></figure>
@@ -105,7 +105,7 @@ $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
 </section>
 <section class="kkg-section kkg-order" data-section="order" aria-labelledby="kkg-order-title">
     <div class="kkg-container">
-        <div class="kkg-center"><p class="kkg-eyebrow">CARA PEMESANAN</p><h2 id="kkg-order-title">Mulai kulakan dalam <em>4 langkah.</em></h2></div>
+        <div class="kkg-center"><p class="kkg-eyebrow">CARA PEMESANAN</p><h2 id="kkg-order-title">Pesan grosir dalam <em>4 langkah.</em></h2></div>
         <div class="kkg-grid-four kkg-steps">
         <?php foreach ($steps as $step): ?>
             <article><span class="kkg-icon kkg-step-icon" aria-hidden="true"><?php echo kkg_icon($step[2], 22); ?></span><h3><?php echo esc_html($step[0]); ?></h3><p><?php echo esc_html($step[1]); ?></p></article>
@@ -152,7 +152,7 @@ $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
 <?php endif; ?>
 <section class="kkg-section kkg-faq" id="faq" data-section="faq" aria-labelledby="kkg-faq-title">
     <div class="kkg-container kkg-faq-grid">
-        <div><p class="kkg-eyebrow">PERTANYAAN UMUM</p><h2 id="kkg-faq-title">Sebelum <br><em>mulai kulakan.</em></h2></div>
+        <div><p class="kkg-eyebrow">PERTANYAAN UMUM</p><h2 id="kkg-faq-title">Informasi sebelum <br><em>pesan grosir.</em></h2></div>
         <div class="kkg-questions">
         <?php $i = 0; foreach ($faq as $question => $answer): $i++; ?>
             <details class="kkg-question"><summary aria-controls="kkg-answer-<?php echo $i; ?>"><?php echo esc_html($question); ?><span class="kkg-faq-icon" aria-hidden="true"><?php echo kkg_icon('chevron-down', 18); ?></span></summary><div id="kkg-answer-<?php echo $i; ?>"><p><?php echo esc_html($answer); ?></p></div></details>
@@ -162,9 +162,9 @@ $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
 </section>
 <section class="kkg-final" data-section="final" aria-labelledby="kkg-final-title" data-kkg-end-guard>
     <div class="kkg-container kkg-center">
-        <p class="kkg-eyebrow">UNTUK RESELLER &amp; PEMILIK TOKO</p>
-        <h2 id="kkg-final-title">Siap Kulakan untuk Usaha Anda?</h2>
-        <p>Mulai grosir dari 1 lusin. Dapatkan katalog produk dan informasi harga langsung dari tim KK Underwear.</p>
+        <p class="kkg-eyebrow">UNTUK PEMILIK TOKO, AGEN &amp; DISTRIBUTOR</p>
+        <h2 id="kkg-final-title">Siap Memenuhi Kebutuhan Stok Usaha Anda?</h2>
+        <p>Siap memenuhi kebutuhan stok toko atau usaha Anda? Mulai pemesanan grosir dari 50 lusin. Hubungi tim KK Underwear untuk mendapatkan katalog dan informasi harga. Untuk kebutuhan pembelian 100 lusin atau lebih, konsultasikan jumlah dan pilihan produk dengan tim kami.</p>
         <div class="kkg-final-cta"><?php kkg_cta('final_cta', true); ?></div>
         <p class="kkg-support">Melayani Pengiriman Seluruh Indonesia</p>
         <?php $kkg_consent_mode = kkg_consent_mode($s); $kkg_privacy_url = get_privacy_policy_url(); ?>
@@ -178,7 +178,7 @@ $testimonials = kkg_visible_testimonials(isset($s) && is_array($s) ? $s : null);
 </section>
 </main>
 <div class="kkg-sticky-bar" data-kkg-sticky hidden>
-    <div class="kkg-sticky-meta"><strong>Kulakan Grosir</strong><span>Mulai 1 lusin · 12 pcs</span></div>
+    <div class="kkg-sticky-meta"><strong>KK Underwear Grosir</strong><span>Minimum Grosir 50 Lusin</span></div>
     <?php kkg_cta('sticky'); ?>
 </div>
 <div class="kkg-consent" data-kkg-banner hidden role="region" aria-label="Pilihan privasi">

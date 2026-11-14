@@ -8,63 +8,65 @@ function kkg_catalog_items() {
             'key' => 'category_0',
             'name' => 'Bra Wanita',
             'alt' => 'Grosir bra dan BH wanita KK Underwear Surabaya',
-            'description' => 'Grosir bra dan BH wanita harian dari supplier bra tepercaya untuk stok agen, reseller, dan toko.',
+            'description' => 'Grosir bra dan BH wanita harian dari supplier bra tepercaya untuk stok toko, agen pakaian dalam, dan distributor.',
         ),
         array(
             'key' => 'category_1',
             'name' => 'Celana Dalam Pria',
             'alt' => 'Grosir celana dalam pria KK Underwear Surabaya',
-            'description' => 'Supplier celana dalam pria untuk kulakan pakaian dalam harian berbahan nyaman di toko Anda.',
+            'description' => 'Supplier celana dalam pria untuk grosir pakaian dalam harian di toko, agen, maupun distributor Anda.',
         ),
         array(
             'key' => 'category_2',
             'name' => 'Celana Dalam Wanita',
             'alt' => 'Grosir celana dalam wanita KK Underwear Surabaya',
-            'description' => 'Grosir celana dalam wanita dan supplier pakaian dalam wanita dengan pilihan model beragam.',
+            'description' => 'Grosir celana dalam wanita dan supplier pakaian dalam wanita dengan pilihan model beragam untuk stok usaha.',
         ),
         array(
             'key' => 'category_3',
             'name' => 'Kaos Kaki',
             'alt' => 'Grosir kaos kaki KK Underwear Surabaya',
-            'description' => 'Stok kaos kaki grosir harian langsung dari supplier untuk kebutuhan toko dan reseller.',
+            'description' => 'Stok kaos kaki grosir harian langsung dari supplier untuk kebutuhan toko, agen, dan distributor.',
         ),
         array(
             'key' => 'category_4',
             'name' => 'Handuk',
             'alt' => 'Grosir handuk harian KK Underwear Surabaya',
-            'description' => 'Pilihan handuk grosir siap kulakan mulai 1 lusin sebagai pelengkap usaha harian.',
+            'description' => 'Pilihan handuk grosir dengan pemesanan minimum 50 lusin sebagai pelengkap stok toko dan usaha Anda.',
         ),
     );
 }
 
-/** Single source of truth for AEO/GEO FAQ items (40-55 word self-contained answers synced 1:1 with FAQPage JSON-LD). */
+/** Single source of truth for AEO/GEO FAQ items (self-contained answers synced 1:1 with FAQPage JSON-LD). */
 function kkg_faq_items() {
     return array(
         'Berapa minimum pembelian grosir pakaian dalam di KK Underwear?' =>
-            'Minimum pembelian grosir pakaian dalam di KK Underwear mulai dari 1 lusin (12 pcs). Ketentuan ini berlaku untuk kebutuhan kulakan pakaian dalam seperti bra atau BH wanita, celana dalam pria, celana dalam wanita, kaos kaki, maupun handuk bagi agen, reseller, dan pemilik toko.',
+            'Minimum pembelian grosir di KK Underwear adalah 50 lusin. Kami melayani kebutuhan stok pakaian dalam, kaos kaki, dan handuk bagi pemilik toko, agen, distributor, serta pelanggan grosir volume besar. Hubungi Customer Service untuk mengetahui ketentuan pemesanan masing-masing kategori produk.',
+        'Apakah KK Underwear melayani pemesanan 100 lusin atau lebih?' =>
+            'Ya, pelanggan dapat menghubungi Customer Service KK Underwear untuk mendiskusikan kebutuhan pemesanan 100 lusin atau lebih, termasuk pilihan produk, ketersediaan stok, dan pengiriman.',
         'Produk apa saja yang tersedia di supplier pakaian dalam KK Underwear?' =>
-            'KK Underwear merupakan supplier bra (BH) wanita, supplier celana dalam pria dan wanita, kaos kaki, serta handuk untuk kebutuhan harian. Seluruh produk tersedia dalam skema grosir pakaian dalam dan perlengkapan harian untuk mendukung perputaran stok toko, agen, maupun reseller.',
-        'Apakah KK Underwear melayani agen pakaian dalam, reseller baru, dan pemilik toko?' =>
-            'Ya, CV. Kasih Karunia berperan sebagai distributor dan supplier pakaian dalam untuk toko, agen pakaian dalam, maupun reseller baru di seluruh Indonesia. Mitra baru dapat memulai pembelian grosir dari 1 lusin tanpa batas belanja besar di awal.',
+            'KK Underwear merupakan supplier bra (BH) wanita, supplier celana dalam pria dan wanita, kaos kaki, serta handuk untuk kebutuhan harian. Seluruh produk tersedia dalam skema grosir pakaian dalam minimum 50 lusin untuk mendukung stok toko, agen, maupun distributor.',
+        'Apakah KK Underwear melayani pemilik toko, agen pakaian dalam, dan distributor?' =>
+            'Ya, CV. Kasih Karunia berperan sebagai distributor dan supplier pakaian dalam untuk toko, agen pakaian dalam, distributor, serta reseller berkapasitas pembelian besar di seluruh Indonesia dengan minimum pembelian 50 lusin.',
         'Di mana lokasi toko dan gudang grosir pakaian dalam KK Underwear?' =>
             'Toko dan gudang CV. Kasih Karunia (KK Underwear) berlokasi di Surabaya, Jawa Timur. Sebagai grosir pakaian dalam Surabaya serta distributor dan supplier pakaian dalam Surabaya, kami melayani pengambilan pesanan dan pengiriman ke berbagai wilayah Indonesia.',
         'Bagaimana cara mendapatkan katalog grosir bra dan celana dalam?' =>
-            'Klik tombol Minta Katalog Grosir pada halaman ini untuk terhubung langsung dengan WhatsApp Customer Service resmi KK Underwear. Tim CS akan mengirimkan katalog produk terbaru dan rincian minimum pembelian sesuai kebutuhan stok toko atau usaha Anda.',
+            'Klik tombol Minta Katalog Grosir pada halaman ini untuk terhubung langsung dengan WhatsApp Customer Service resmi KK Underwear. Tim CS akan mengirimkan katalog produk terbaru dan rincian minimum pembelian 50 lusin sesuai kebutuhan stok toko atau usaha Anda.',
         'Apakah daftar harga grosir tersedia di website?' =>
-            'Daftar harga grosir tidak dicantumkan secara terbuka di website. Informasi harga kulakan pakaian dalam untuk bra (BH) wanita, celana dalam, kaos kaki, dan handuk dapat diperoleh langsung melalui WhatsApp Customer Service resmi CV. Kasih Karunia.',
+            'Daftar harga grosir tidak dicantumkan secara terbuka di website. Informasi harga grosir pakaian dalam untuk bra (BH) wanita, celana dalam, kaos kaki, dan handuk dapat diperoleh langsung melalui WhatsApp Customer Service resmi CV. Kasih Karunia.',
         'Apakah melayani pengiriman grosir pakaian dalam dari Surabaya ke seluruh Indonesia?' =>
-            'Ya, KK Underwear melayani pengiriman grosir pakaian dalam dari toko dan gudang di Surabaya ke seluruh Indonesia. Ongkos kirim dan pilihan ekspedisi atau kargo volume besar dikonfirmasi langsung bersama Customer Service sebelum pesanan diproses.',
-        'Bagaimana cara melakukan pemesanan kulakan di KK Underwear?' =>
-            'Alur pemesanan terdiri dari empat langkah: hubungi WhatsApp CS untuk meminta katalog grosir, pilih produk mulai 1 lusin, pastikan rincian pesanan dan pembayaran bersama CS, lalu pesanan diproses untuk pengiriman sesuai kesepakatan ekspedisi.',
+            'Ya, KK Underwear melayani pengiriman grosir pakaian dalam volume besar dari toko dan gudang di Surabaya ke seluruh Indonesia. Ongkos kirim dan pilihan ekspedisi atau kargo dikonfirmasi langsung bersama Customer Service sebelum pesanan diproses.',
+        'Bagaimana cara melakukan pemesanan grosir di KK Underwear?' =>
+            'Alur pemesanan terdiri dari empat langkah: hubungi WhatsApp CS untuk meminta katalog grosir, pilih produk dengan minimum pembelian 50 lusin, pastikan rincian pesanan dan pembayaran bersama CS, lalu pesanan diproses untuk pengiriman sesuai kesepakatan ekspedisi.',
     );
 }
 
 function kkg_seo_title_text() {
-    return 'Grosir & Supplier Pakaian Dalam Surabaya | KK Underwear';
+    return 'Grosir Pakaian Dalam Surabaya | Supplier KK Underwear';
 }
 
 function kkg_seo_description() {
-    return 'Supplier & distributor pakaian dalam wanita di Surabaya: grosir bra (BH), celana dalam, kaos kaki untuk agen, reseller & toko mulai 1 lusin. Minta katalog.';
+    return 'Supplier grosir pakaian dalam Surabaya untuk toko, agen dan distributor. Minimum order 50 lusin. Tersedia bra, celana dalam, kaos kaki dan handuk. Minta katalog.';
 }
 
 function kkg_seo_robots($s = null) {
@@ -120,7 +122,7 @@ function kkg_seo_json_ld($s = null) {
         'name' => 'CV. Kasih Karunia (KK Underwear)',
         'alternateName' => 'KK Underwear',
         'url' => $home,
-        'description' => 'Distributor, agen, dan supplier pakaian dalam wanita & pria (bra/BH, celana dalam, kaos kaki, handuk) dengan toko dan gudang di Surabaya, melayani kulakan grosir mulai 1 lusin ke seluruh Indonesia.',
+        'description' => 'Distributor, agen, dan supplier pakaian dalam wanita & pria (bra/BH, celana dalam, kaos kaki, handuk) dengan toko dan gudang di Surabaya, melayani pemesanan grosir minimum 50 lusin ke seluruh Indonesia.',
         'address' => $address,
         'areaServed' => array('@type' => 'Country', 'name' => 'Indonesia'),
     );
@@ -163,7 +165,13 @@ function kkg_seo_json_ld($s = null) {
                 'name' => kkg_seo_title_text(),
                 'description' => kkg_seo_description(),
                 'inLanguage' => 'id-ID',
-                'isPartOf' => array('url' => $home, 'name' => 'KK Underwear'),
+                'isPartOf' => array(
+                    '@type' => 'WebSite',
+                    'url' => $home,
+                    'name' => 'KK Underwear',
+                    'publisher' => array('@id' => $canonical . '#organization'),
+                ),
+                'publisher' => array('@id' => $canonical . '#organization'),
                 'about' => array('@id' => $canonical . '#organization'),
                 'breadcrumb' => array('@id' => $canonical . '#breadcrumb'),
                 'mainEntity' => array('@id' => $canonical . '#catalog'),
@@ -201,6 +209,7 @@ function kkg_seo_render_head($s = null) {
     if (!$og_image) {
         $og_image = kkg_seo_asset_image((int) ($s['logo'] ?? 0), 'assets/logo-kk.webp');
     }
+    echo '<title>' . esc_html($title) . '</title>' . "\n";
     echo '<meta name="description" content="' . esc_attr($desc) . '">' . "\n";
     echo '<meta name="robots" content="' . esc_attr($robots) . '">' . "\n";
     echo '<link rel="canonical" href="' . esc_url($canonical) . '">' . "\n";
@@ -228,6 +237,17 @@ function kkg_seo_filter_title($title) {
     return kkg_is_page() ? kkg_seo_title_text() : $title;
 }
 
+/** Force lang="id-ID" strictly on /grosir/ without altering site-wide WordPress language settings. */
+function kkg_seo_language_attributes($output) {
+    if (!kkg_is_page()) {
+        return $output;
+    }
+    if (preg_match('/\blang=(["\'])[^"\']*\1/i', $output)) {
+        return preg_replace('/\blang=(["\'])[^"\']*\1/i', 'lang="id-ID"', $output, 1) ?? $output;
+    }
+    return trim('lang="id-ID" ' . $output);
+}
+
 function kkg_seo_wp_head() {
     if (kkg_is_page()) {
         kkg_seo_render_head();
@@ -237,6 +257,7 @@ function kkg_seo_wp_head() {
 /** Prevent duplicate head/schema output from global SEO plugins solely on /grosir/. */
 function kkg_seo_page_isolation() {
     if (!kkg_is_page()) { return; }
+    remove_action('wp_head', '_wp_render_title_tag', 1);
     remove_action('wp_head', 'rel_canonical');
     foreach (array('wpseo_title', 'wpseo_metadesc', 'wpseo_canonical', 'wpseo_robots',
         'wpseo_locale', 'wpseo_opengraph_type', 'wpseo_opengraph_site_name',

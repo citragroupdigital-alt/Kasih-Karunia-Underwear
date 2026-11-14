@@ -4,7 +4,7 @@ define('ABSPATH', __DIR__ . '/');
 define('ARRAY_A', 'ARRAY_A');
 define('KKG_DIR', dirname(__DIR__) . '/wordpress/kk-grosir/');
 if (!defined('KKG_URL')) { define('KKG_URL', '/'); }
-if (!defined('KKG_VERSION')) { define('KKG_VERSION', '0.2.7'); }
+if (!defined('KKG_VERSION')) { define('KKG_VERSION', '0.2.8'); }
 define('KKG_LOCAL_PREVIEW', true);
 $GLOBALS['kkg_test_options'] = array('kkg_settings' => array('mode' => 'staging'));
 function get_option($k, $fallback = false) { return $GLOBALS['kkg_test_options'][$k] ?? $fallback; }

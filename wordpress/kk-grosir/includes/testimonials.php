@@ -19,8 +19,8 @@ function kkg_testimonials_data() {
     return array(
         array(
             'name' => 'Pak Agus',
-            'category' => 'Reseller Pakaian Dalam',
-            'quote' => 'Kulakan grosir bra dan celana dalam mulai 1 lusin membantu perputaran stok harian reseller.',
+            'category' => 'Agen Pakaian Dalam',
+            'quote' => 'Pemesanan grosir bra dan celana dalam minimum 50 lusin membantu kelancaran stok toko.',
             'initials' => 'PA',
             'is_placeholder' => true,
         ),

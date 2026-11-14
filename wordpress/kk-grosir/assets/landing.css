@@ -407,30 +407,39 @@
     position: absolute;
     bottom: 24px;
     left: -22px;
+    max-width: 300px;
     background: #fff;
     border: 1px solid var(--kkg-line);
     border-radius: var(--kkg-radius);
     padding: 14px 20px;
     box-shadow: 0 12px 30px #151b3314;
     display: flex;
-    flex-direction: column
+    flex-direction: column;
+    gap: 2px
 }
 
 .kkg-moq>span {
     font-size: .75rem;
+    line-height: 1.4;
     color: var(--kkg-muted)
 }
 
+.kkg-moq-label {
+    font-weight: 700;
+    letter-spacing: .05em
+}
+
 .kkg-moq strong {
-    font-size: 2.5rem;
+    font-size: 2.375rem;
     line-height: 1.1;
     letter-spacing: -.04em;
     color: var(--kkg-blue)
 }
 
 .kkg-moq strong small {
-    font-size: 1rem;
-    font-weight: 600
+    font-size: 1.0625rem;
+    font-weight: 700;
+    letter-spacing: .02em
 }
 
 .kkg-stats {
@@ -1323,12 +1332,13 @@
 
     .kkg-moq {
         position: static;
+        max-width: none;
         margin-top: 14px;
-        flex-direction: row;
-        align-items: baseline;
-        justify-content: center;
-        gap: 10px;
-        padding: 12px 18px
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 4px;
+        padding: 14px 18px
     }
 
     .kkg-grid-four {
@@ -1471,9 +1481,20 @@
 
     .kkg-hero-copy .kkg-badge,
     .kkg-hero-image,
-    .kkg-hero-art,
     .kkg-desktop-only {
         display: none
+    }
+
+    .kkg-moq {
+        margin-top: 0;
+        align-items: flex-start;
+        text-align: left;
+        padding: 12px 16px;
+        gap: 2px
+    }
+
+    .kkg-moq strong {
+        font-size: 1.75rem
     }
 
     .kkg-hero {

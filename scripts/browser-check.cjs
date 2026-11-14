@@ -19,11 +19,11 @@ const path = require('node:path');
       assert.deepEqual(await page.locator('[data-section]').evaluateAll(els=>els.map(e=>e.getAttribute('data-section'))),['header','hero','statistics','usp','categories','about','order','testimonials','faq','final'],'exact 10-section order with testimonials between order and faq');
       assert.equal(await page.locator('footer').count(),0,'footer removed');
       assert.equal(await page.locator('h1').count(),1,'exactly one H1');
-      assert.equal(await page.locator('h1').innerText(),'Kulakan Grosir Pakaian Dalam\nMulai 1 Lusin!');
+      assert.equal(await page.locator('h1').innerText(),'Grosir Pakaian Dalam untuk Stok Usaha\nMulai 50 Lusin!');
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'overflow at '+width);
       assert.equal(await page.locator('.kkg-product').count(),5);
       assert.equal(await page.locator('.kkg-product-desc').count(),5,'all 5 categories have SEO/AEO micro descriptions');
-      assert.equal(await page.locator('.kkg-question').count(),8,'all 8 AEO/GEO FAQs rendered');
+      assert.equal(await page.locator('.kkg-question').count(),9,'all 9 AEO/GEO FAQs rendered');
       assert.equal(await page.locator('.kkg-product [data-kkg-cta]').count(),0,'no CTA inside category cards');
       assert.equal(await page.locator('.kkg-review-note').count(),0,'review note removed');
       assert.equal(await page.locator('.kkg-staging, #kkg-setup').count(),0,'staging yellow banner removed');
@@ -40,41 +40,56 @@ const path = require('node:path');
       assert.equal(await page.locator('.kkg-step-number').count(),0,'order step numbers removed');
       assert.equal(await page.locator('.kkg-steps .kkg-step-icon .kkg-svg').count(),4,'order steps show 4 icons');
       assert.equal((await page.locator('.kkg-about-location').innerText()).length<=140,true,'about location text concise');
-      for(const kw of ['grosir celana dalam','grosir celana dalam wanita','grosir pakaian dalam','grosir pakaian dalam wanita','grosir bra','bh wanita','supplier bra','supplier pakaian dalam','supplier pakaian dalam wanita','supplier celana dalam','supplier pakaian dalam untuk toko','kulakan pakaian dalam','distributor pakaian dalam','grosir pakaian dalam surabaya','distributor pakaian dalam surabaya','supplier pakaian dalam surabaya','agen pakaian dalam']) {
+      for(const kw of ['grosir celana dalam','grosir celana dalam wanita','grosir pakaian dalam','grosir pakaian dalam wanita','grosir bra','bh wanita','supplier bra','supplier pakaian dalam','supplier pakaian dalam wanita','supplier celana dalam','supplier pakaian dalam untuk toko','distributor pakaian dalam','grosir pakaian dalam surabaya','distributor pakaian dalam surabaya','supplier pakaian dalam surabaya','agen pakaian dalam','50 lusin','100 lusin']) {
         assert.equal(rawText.toLowerCase().includes(kw),true,'missing DOM keyword: '+kw+' at '+width);
       }
-      for(const kw of ['grosir celana dalam','grosir celana dalam wanita','grosir pakaian dalam','grosir pakaian dalam wanita','grosir bra','bh wanita','supplier bra','supplier pakaian dalam','supplier pakaian dalam wanita','supplier celana dalam','kulakan pakaian dalam','distributor pakaian dalam','agen pakaian dalam','surabaya']) {
+      for(const kw of ['grosir celana dalam','grosir celana dalam wanita','grosir pakaian dalam','grosir pakaian dalam wanita','grosir bra','bh wanita','supplier bra','supplier pakaian dalam','supplier pakaian dalam wanita','supplier celana dalam','distributor pakaian dalam','agen pakaian dalam','surabaya','50 lusin','100 lusin']) {
         assert.equal(bodyText.toLowerCase().includes(kw),true,'missing visible keyword: '+kw+' at '+width);
       }
       const seoHead=await page.evaluate(()=>{
+        const htmlLang=document.documentElement.getAttribute('lang')||'';
         const title=document.title;
+        const titleCount=document.querySelectorAll('title').length;
         const desc=document.querySelector('meta[name="description"]')?.getAttribute('content')||'';
         const robots=document.querySelector('meta[name="robots"]')?.getAttribute('content')||'';
         const canonical=document.querySelector('link[rel="canonical"]')?.getAttribute('href')||'';
         const og=prop=>Array.from(document.querySelectorAll(`meta[property="${prop}"]`)).map(m=>m.getAttribute('content')||'');
         const tw=name=>Array.from(document.querySelectorAll(`meta[name="${name}"]`)).map(m=>m.getAttribute('content')||'');
         const counts={
+          title:titleCount,
           desc:document.querySelectorAll('meta[name="description"]').length,
           robots:document.querySelectorAll('meta[name="robots"]').length,
           canonical:document.querySelectorAll('link[rel="canonical"]').length,
+          keywords:document.querySelectorAll('meta[name="keywords"]').length,
         };
-        const scripts=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map(s=>JSON.parse(s.textContent));
-        return {title,desc,robots,canonical,counts,ogLocale:og('og:locale'),ogType:og('og:type'),ogSiteName:og('og:site_name'),ogTitle:og('og:title'),ogDesc:og('og:description'),ogUrl:og('og:url'),twCard:tw('twitter:card'),scripts};
+        const rawLd=Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map(s=>s.textContent);
+        const scripts=rawLd.map(t=>JSON.parse(t));
+        const stickyText=(document.querySelector('.kkg-sticky-meta')?.textContent||'');
+        return {htmlLang,title,desc,robots,canonical,counts,ogLocale:og('og:locale'),ogType:og('og:type'),ogSiteName:og('og:site_name'),ogTitle:og('og:title'),ogDesc:og('og:description'),ogUrl:og('og:url'),twCard:tw('twitter:card'),scripts,rawLd:rawLd.join('\n'),stickyText};
       });
-      assert.match(seoHead.title,/Grosir & Supplier Pakaian Dalam Surabaya/);
+      assert.equal(seoHead.htmlLang,'id-ID','landing page html lang set to id-ID');
+      assert.equal(seoHead.title,'Grosir Pakaian Dalam Surabaya | Supplier KK Underwear');
+      assert.equal(seoHead.desc,'Supplier grosir pakaian dalam Surabaya untuk toko, agen dan distributor. Minimum order 50 lusin. Tersedia bra, celana dalam, kaos kaki dan handuk. Minta katalog.');
       assert.equal(seoHead.desc.length>=120&&seoHead.desc.length<=165,true,'meta description 120-165 chars');
       assert.match(seoHead.robots,/noindex/);
       assert.equal(seoHead.canonical.endsWith('/grosir/'),true,'canonical points to /grosir/');
       assert.equal(seoHead.canonical,'https://example.test/grosir/','preview canonical uses fixture origin');
-      assert.deepEqual(seoHead.counts,{desc:1,robots:1,canonical:1},'single description, robots, canonical tags');
+      assert.deepEqual(seoHead.counts,{title:1,desc:1,robots:1,canonical:1,keywords:0},'single title, description, robots, canonical and zero meta keywords');
+      const combinedCheckText=(rawText+'\n'+seoHead.desc+'\n'+seoHead.title+'\n'+seoHead.rawLd+'\n'+seoHead.stickyText).toLowerCase();
+      for(const oldRef of ['1 lusin','12 pcs','mulai kulakan','mulai 1 ','kulakan grosir','siap kulakan']) {
+        assert.equal(combinedCheckText.includes(oldRef),false,'old MOQ/kulakan text removed from page, FAQ, SEO, JSON-LD, Sticky CTA: '+oldRef);
+      }
       assert.deepEqual(seoHead.ogLocale,['id_ID'],'single og:locale=id_ID');
       assert.deepEqual(seoHead.ogType,['website'],'single og:type=website');
       assert.deepEqual(seoHead.ogSiteName,['KK Underwear — CV. Kasih Karunia'],'single og:site_name');
       assert.equal(seoHead.ogTitle.length===1&&seoHead.ogDesc.length===1&&seoHead.ogUrl.length===1&&seoHead.twCard.length===1,true,'single OG/Twitter meta tags');
       assert.equal(seoHead.scripts.length,1,'single JSON-LD block');
       const graph=seoHead.scripts[0]['@graph']||[];
-      assert.equal(graph.some(n=>Array.isArray(n['@type'])&&n['@type'].includes('WholesaleStore')&&n.address?.addressLocality==='Surabaya'&&n.logo==='https://example.test/assets/logo-kk.webp'),true,'WholesaleStore schema with fixture logo URL');
-      assert.equal(graph.find(n=>n['@type']==='FAQPage')?.mainEntity?.length,8,'FAQPage schema count matches 8 FAQs');
+      const orgNode=graph.find(n=>Array.isArray(n['@type'])&&n['@type'].includes('WholesaleStore'));
+      const webPageNode=graph.find(n=>n['@type']==='WebPage');
+      assert.equal(Boolean(orgNode&&orgNode.address?.addressLocality==='Surabaya'&&orgNode.logo==='https://example.test/assets/logo-kk.webp'),true,'WholesaleStore schema with fixture logo URL');
+      assert.equal(webPageNode?.publisher?.['@id'],orgNode?.['@id'],'WebPage schema publisher references WholesaleStore organization');
+      assert.equal(graph.find(n=>n['@type']==='FAQPage')?.mainEntity?.length,9,'FAQPage schema count matches 9 FAQs');
       assert.equal(graph.find(n=>n['@type']==='OfferCatalog')?.itemListElement?.length,5,'OfferCatalog schema count matches 5 categories');
       assert.equal(graph.some(n=>n['@type']==='Review'||n['@type']==='AggregateRating'),false,'No Review or AggregateRating schema emitted');
       assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-card').count(),3,'3 testimonial cards rendered');
@@ -111,7 +126,7 @@ const path = require('node:path');
         assert.equal(testiMobile.cardH<=270,true,'compact mobile testimonial card height at '+width+': '+testiMobile.cardH);
       }
       assert.equal(await page.locator('.kkg-stats strong').allTextContents().then(x=>x.join('|')),'70.000+|2.000+|40.000+');
-      assert.equal((await page.locator('#kkg-faq-title').innerText()).replace(/\s+/g,' ').trim(),'Sebelum mulai kulakan.');
+      assert.equal((await page.locator('#kkg-faq-title').innerText()).replace(/\s+/g,' ').trim(),'Informasi sebelum pesan grosir.');
       const isMobile=width<=768;
       const fontState=await page.evaluate(async()=>{
         await document.fonts.ready;
@@ -152,7 +167,10 @@ const path = require('node:path');
       assert.equal(await page.locator('[data-kkg-settings]').count(),0,'no active privacy button in default disabled mode at '+width);
       assert.equal(await page.locator('.kkg-hero-copy .kkg-badge').isVisible(),!isMobile,'hero badge visibility mismatch at '+width);
       assert.equal(await page.locator('.kkg-hero-image').isVisible(),!isMobile,'hero image visibility mismatch at '+width);
-      assert.equal(await page.locator('.kkg-moq').isVisible(),!isMobile,'MOQ badge visibility mismatch at '+width);
+      assert.equal(await page.locator('.kkg-moq').isVisible(),true,'MOQ 50 Lusin badge visible on desktop and mobile at '+width);
+      const moqState=await page.locator('.kkg-moq').evaluate(el=>({text:el.innerText,clip:el.scrollWidth>el.clientWidth+1,h:el.getBoundingClientRect().height}));
+      assert.equal(moqState.clip,false,'MOQ badge not clipped at '+width);
+      assert.equal(/MINIMUM ORDER/i.test(moqState.text)&&/50\s*LUSIN/i.test(moqState.text)&&moqState.text.includes('Khusus pembelian grosir dalam jumlah besar')&&moqState.h>40,true,'MOQ 50 Lusin copy clear at '+width);
       assert.equal(await page.locator('.kkg-desktop-only').isVisible(),!isMobile,'about desktop tail visibility mismatch at '+width);
       for(const secSel of ['#produk','#testimoni']){
         assert.equal(await page.locator(secSel+' [data-kkg-carousel-controls]').isVisible(),isMobile,'carousel controls visibility mismatch for '+secSel+' at '+width);
@@ -584,10 +602,14 @@ const path = require('node:path');
       assert.equal(await p.locator('[data-kkg-sticky]').isVisible(),true,'sticky shows past Hero on '+width);
       const stickyMetrics=await p.locator('[data-kkg-sticky]').evaluate(bar=>{
         const meta=bar.querySelector('.kkg-sticky-meta');
+        const strong=meta.querySelector('strong'), span=meta.querySelector('span');
         const btn=bar.querySelector('.kkg-button');
         const br=bar.getBoundingClientRect(), mr=meta.getBoundingClientRect(), btr=btn.getBoundingClientRect();
-        return {barH:br.height,barW:br.width,metaW:mr.width,btnW:btr.width,btnH:btr.height,fontSize:parseFloat(getComputedStyle(btn).fontSize),overflowX:document.documentElement.scrollWidth>innerWidth,overlap:mr.right>btr.left};
+        const clipped=strong.scrollWidth>strong.clientWidth+1||span.scrollWidth>span.clientWidth+1;
+        return {barH:br.height,barW:br.width,metaW:mr.width,btnW:btr.width,btnH:btr.height,fontSize:parseFloat(getComputedStyle(btn).fontSize),overflowX:document.documentElement.scrollWidth>innerWidth,overlap:mr.right>btr.left,clipped,spanText:span.innerText.trim()};
       });
+      assert.equal(stickyMetrics.spanText,'Minimum Grosir 50 Lusin','sticky CTA displays Minimum Grosir 50 Lusin on '+width);
+      assert.equal(stickyMetrics.clipped,false,'sticky CTA text not clipped on '+width);
       assert.equal(stickyMetrics.overflowX,false,'no horizontal overflow with sticky bar on '+width);
       assert.equal(stickyMetrics.overlap,false,'sticky meta and CTA do not overlap on '+width);
       assert.equal(stickyMetrics.btnH>=44&&stickyMetrics.btnH<=50,true,'sticky CTA keeps >=44px tap target without bulky height on '+width+': '+stickyMetrics.btnH);
