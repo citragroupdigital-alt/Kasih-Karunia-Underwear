@@ -71,33 +71,50 @@ check(count($ld['@graph'][3]['itemListElement']) === count(kkg_catalog_items()) 
 check(count($ld['@graph'][4]['mainEntity']) === count(kkg_faq_items()) && count(kkg_faq_items()) === 9, 'FAQPage schema matches 9 FAQ items');
 $ldJson = json_encode($ld);
 check(strpos($ldJson, 'Review') === false && strpos($ldJson, 'AggregateRating') === false, 'No Review or AggregateRating schema emitted');
-check(KKG_VERSION === '0.2.10', 'Plugin/asset version bumped to 0.2.10');
-check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.10') !== false, 'Main plugin header version 0.2.10');
-check(kkg_visible_testimonials(array('mode' => 'active')) === array(), 'Unapproved real records hidden on public active mode');
-check(kkg_visible_testimonials(array('mode' => 'off')) === array(), 'Unapproved real records hidden when mode off');
+check(KKG_VERSION === '0.2.11', 'Plugin/asset version bumped to 0.2.11');
+check(strpos((string) file_get_contents(KKG_DIR . 'kk-grosir.php'), 'Version: 0.2.11') !== false, 'Main plugin header version 0.2.11');
 check(kkg_visible_testimonials(array('mode' => 'active'), array()) === array(), 'Empty dataset returns zero items');
 check(kkg_visible_testimonials(array('mode' => 'staging'), array()) === array(), 'Empty dataset returns zero items in staging too');
 check(kkg_testimonial_asset_url('../secrets.webp') === '', 'Path traversal rejected in testimonial asset helper');
-check(kkg_testimonial_asset_url('assets/testimonials/chat-pak-aan.webp') !== '', 'Valid redacted WebP resolves inside plugin directory');
+check(kkg_testimonial_asset_url('assets/testimonials/chat-pak-aan.webp') === '', 'Removed Pak Aan asset absent from plugin directory');
+check(kkg_testimonial_asset_url('assets/testimonials/chat-cv-anindiya.webp') !== '', 'Valid redacted WebP resolves inside plugin directory');
 
-$GLOBALS['kkg_test_can_manage'] = false;
-check(kkg_visible_testimonials(array('mode' => 'staging')) === array(), 'Unapproved records hidden from non-admins in staging');
-$GLOBALS['kkg_test_can_manage'] = true;
-$stagingTestimonials = kkg_visible_testimonials(array('mode' => 'staging'));
-check(count($stagingTestimonials) === 4, 'Four redacted WhatsApp testimonial candidates visible to staging admin');
-foreach ($stagingTestimonials as $item) {
-    check(!empty($item['is_verified']) && empty($item['is_placeholder']) && empty($item['is_approved_for_publication']), 'All redacted real candidates marked verified & awaiting approval');
-    check(!empty($item['chat_proof_images']) && count($item['chat_proof_images']) >= 1, 'Each redacted candidate includes valid proof image');
+$approvedActiveTestimonials = kkg_visible_testimonials(array('mode' => 'active'));
+check(count($approvedActiveTestimonials) === 3, 'Three approved WhatsApp testimonials visible on public active mode');
+check(array_column($approvedActiveTestimonials, 'id') === array('cv-anindiya', 'bunda-hidayati', 'algo-jaya'), 'Pak Aan removed and exact 3 approved testimonials returned in order');
+foreach ($approvedActiveTestimonials as $item) {
+    check(!empty($item['is_verified']) && empty($item['is_placeholder']) && !empty($item['is_approved_for_publication']), 'All live testimonials marked verified, approved, and non-placeholder');
+    check(!empty($item['chat_proof_images']) && count($item['chat_proof_images']) >= 1, 'Each live testimonial includes valid proof image');
 }
 
-// Simulated approved fixture check (including multi-image proof and strict placeholder exclusion).
+// Privacy gate fixture checks: unapproved records & placeholders must stay blocked on active/non-admin modes.
+$unapprovedFixture = array(
+    array(
+        'id' => 'unapproved-real',
+        'name' => 'Mitra Belum Disetujui',
+        'category' => 'Mitra Grosir',
+        'quote' => 'Tidak boleh tampil publik sebelum disetujui.',
+        'chat_proof_images' => array(array('rel' => 'assets/testimonials/chat-cv-anindiya.webp')),
+        'is_verified' => true,
+        'is_approved_for_publication' => false,
+        'is_placeholder' => false,
+    ),
+);
+check(kkg_visible_testimonials(array('mode' => 'active'), $unapprovedFixture) === array(), 'Unapproved real records stay hidden on public active mode');
+check(kkg_visible_testimonials(array('mode' => 'off'), $unapprovedFixture) === array(), 'Unapproved real records stay hidden when mode off');
+$GLOBALS['kkg_test_can_manage'] = false;
+check(kkg_visible_testimonials(array('mode' => 'staging'), $unapprovedFixture) === array(), 'Unapproved records hidden from non-admins in staging');
+$GLOBALS['kkg_test_can_manage'] = true;
+check(count(kkg_visible_testimonials(array('mode' => 'staging'), $unapprovedFixture)) === 1, 'Unapproved candidate visible only to staging admin');
+
+// Simulated fixture check (multi-image proof + strict placeholder exclusion even when approved).
 $simApproved = array(
     array(
         'id' => 'sim-placeholder',
         'name' => 'Fake Placeholder',
         'category' => 'Mitra',
         'quote' => 'Tidak boleh muncul.',
-        'chat_proof_images' => array(array('rel' => 'assets/testimonials/chat-pak-aan.webp')),
+        'chat_proof_images' => array(array('rel' => 'assets/testimonials/chat-cv-anindiya.webp')),
         'is_verified' => true,
         'is_approved_for_publication' => true,
         'is_placeholder' => true,
@@ -109,8 +126,8 @@ $simApproved = array(
         'quote' => 'Simulasi kutipan untuk pengujian.',
         'order_highlight' => 'Simulasi Multi Halaman',
         'chat_proof_images' => array(
-            array('rel' => 'assets/testimonials/chat-pak-aan.webp'),
             array('rel' => 'assets/testimonials/chat-cv-anindiya.webp'),
+            array('rel' => 'assets/testimonials/chat-bunda-hidayati.webp'),
         ),
         'is_verified' => true,
         'is_approved_for_publication' => true,
@@ -126,14 +143,16 @@ $posOrder = strpos($stagingHtml, 'data-section="order"');
 $posTesti = strpos($stagingHtml, 'data-section="testimonials"');
 $posFaq = strpos($stagingHtml, 'data-section="faq"');
 check($posOrder !== false && $posTesti !== false && $posFaq !== false && $posOrder < $posTesti && $posTesti < $posFaq, 'Testimonials placed between Order and FAQ');
-check(strpos($stagingHtml, 'Cerita Mitra') !== false && strpos($stagingHtml, 'Testimoni Pelanggan') !== false, 'Updated section heading rendered');
+check(strpos($stagingHtml, 'Cerita Mitra Kasih Karunia') !== false, 'Exact owner-requested testimonial headline rendered');
 check(strpos($stagingHtml, 'data-kkg-lightbox') !== false && strpos($stagingHtml, 'closedby="any"') !== false && strpos($stagingHtml, 'data-kkg-proof-data') !== false, 'Lightbox dialog and proof JSON rendered');
-check(strpos($stagingHtml, 'CONTOH TESTIMONI') === false && strpos($stagingHtml, 'Pak Agus') === false, 'Old dummy placeholders removed');
+check(strpos($stagingHtml, 'CONTOH TESTIMONI') === false && strpos($stagingHtml, 'Pak Agus') === false && strpos($stagingHtml, 'Pak Aan') === false, 'Old placeholders and removed Pak Aan absent from staging HTML');
 
-// Verify public active mode with currently unapproved data omits entire testimonials section cleanly.
+// Verify public active mode renders the 3 approved testimonials cleanly without staging badge or removed Pak Aan.
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'active', 'phone' => '62895339293140');
 $activePublicHtml = kkg_render();
-check(strpos($activePublicHtml, 'data-section="testimonials"') === false && strpos($activePublicHtml, 'data-kkg-lightbox') === false, 'Public active mode omits testimonials section completely until approved');
+check(strpos($activePublicHtml, 'data-section="testimonials"') !== false && strpos($activePublicHtml, 'data-kkg-lightbox') !== false, 'Public active mode renders approved testimonials and lightbox');
+check(strpos($activePublicHtml, 'kkg-testimonial-stage-badge') === false && strpos($activePublicHtml, 'Pak Aan') === false && strpos($activePublicHtml, 'Pak Agus') === false, 'Public active HTML omits staging badge, Pak Aan, and placeholders');
+check(strpos($activePublicHtml, 'Bunda Lusi') !== false && strpos($activePublicHtml, 'Bunda Hidayati') !== false && strpos($activePublicHtml, 'Algo Jaya') !== false, 'Public active HTML includes exact 3 approved testimonials');
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'staging', 'phone' => '62895339293140');
 $allSeoAndBodyText = strtolower($stagingHtml . "\n" . $ldJson . "\n" . kkg_seo_description() . "\n" . kkg_seo_title_text());
 foreach (array('1 lusin', '12 pcs', 'mulai kulakan', 'mulai 1', 'siap kulakan', 'kulakan grosir') as $forbiddenMoq) {
@@ -143,7 +162,7 @@ check(strpos(strtolower($stagingHtml), '50 lusin') !== false && strpos($stagingH
 check(strpos($ldJson, '50 lusin') !== false && strpos($ldJson, '100 lusin atau lebih') !== false, '50 lusin & 100 lusin messaging synced into JSON-LD');
 $GLOBALS['kkg_test_options']['kkg_settings'] = array('mode' => 'active', 'phone' => '62895339293140');
 $activeHtml = kkg_render();
-check(strpos($activeHtml, 'data-section="testimonials"') === false && strpos($activeHtml, 'Pak Agus') === false && strpos($activeHtml, 'Pak Budi') === false && strpos($activeHtml, 'Ibu Lala') === false, 'No testimonial placeholder leaked in active mode HTML');
+check(strpos($activeHtml, 'Pak Agus') === false && strpos($activeHtml, 'Pak Budi') === false && strpos($activeHtml, 'Ibu Lala') === false && strpos($activeHtml, 'Pak Aan') === false, 'No testimonial placeholder or removed item leaked in active mode HTML');
 check(kkg_consent_mode(array('privacy_reviewed' => 0, 'consent_mode' => 'standalone')) === 'disabled', 'Unreviewed privacy forces disabled consent mode');
 check(kkg_consent_mode(array('privacy_reviewed' => 1, 'consent_mode' => 'disabled')) === 'disabled', 'Disabled consent mode preserved');
 check(kkg_consent_mode(array('privacy_reviewed' => 1, 'consent_mode' => 'standalone')) === 'standalone', 'Reviewed standalone consent mode allowed');

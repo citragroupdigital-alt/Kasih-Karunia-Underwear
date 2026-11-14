@@ -12,6 +12,13 @@ if ($consentArg !== 'disabled') {
 $testimonialFixture = $argv[3] ?? '';
 if ($testimonialFixture === 'empty') {
     add_filter('kkg_testimonials_items', static function () { return array(); });
+} elseif ($testimonialFixture === 'unapproved') {
+    add_filter('kkg_testimonials_items', static function ($items) {
+        foreach ($items as &$item) {
+            $item['is_approved_for_publication'] = false;
+        }
+        return $items;
+    });
 } elseif ($testimonialFixture === 'simulated') {
     add_filter('kkg_testimonials_items', static function ($items) {
         foreach ($items as $idx => &$item) {
@@ -19,7 +26,7 @@ if ($testimonialFixture === 'empty') {
             if ($idx === 1) {
                 $item['order_highlight'] = '[Simulasi QA Multi-Foto] Produk LaParis';
                 $item['chat_proof_images'][] = array(
-                    'rel' => 'assets/testimonials/chat-bunda-hidayati.webp',
+                    'rel' => 'assets/testimonials/chat-algo-jaya.webp',
                     'alt' => 'Simulasi halaman kedua bukti chat WhatsApp untuk pengujian multi-gambar',
                     'width' => 460,
                     'height' => 920,

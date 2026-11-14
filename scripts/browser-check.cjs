@@ -92,10 +92,11 @@ const path = require('node:path');
       assert.equal(graph.find(n=>n['@type']==='FAQPage')?.mainEntity?.length,9,'FAQPage schema count matches 9 FAQs');
       assert.equal(graph.find(n=>n['@type']==='OfferCatalog')?.itemListElement?.length,5,'OfferCatalog schema count matches 5 categories');
       assert.equal(graph.some(n=>n['@type']==='Review'||n['@type']==='AggregateRating'),false,'No Review or AggregateRating schema emitted');
-      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-card').count(),4,'4 redacted testimonial cards rendered in staging');
-      assert.deepEqual(await page.locator('[data-section="testimonials"] .kkg-testimonial-meta h3').allTextContents(),['Pak Aan','Bunda Lusi — CV. Anindiya','Bunda Hidayati','Pak Irfan — Algo Jaya'],'redacted testimonial partner names rendered in staging');
+      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-card').count(),3,'3 approved testimonial cards rendered in staging');
+      assert.deepEqual(await page.locator('[data-section="testimonials"] .kkg-testimonial-meta h3').allTextContents(),['Bunda Lusi — CV. Anindiya','Bunda Hidayati','Pak Irfan — Algo Jaya'],'3 approved testimonial partner names rendered (Pak Aan excluded)');
+      assert.equal(rawText.includes('Pak Aan'),false,'removed Pak Aan testimonial absent');
       assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-badge').count(),0,'old CONTOH TESTIMONI badge absent');
-      assert.equal(await page.locator('[data-section="testimonials"] #kkg-testimonials-title').innerText(),'Cerita Mitra & Testimoni Pelanggan','updated testimonials H2 rendered');
+      assert.equal(await page.locator('[data-section="testimonials"] #kkg-testimonials-title').innerText(),'Cerita Mitra Kasih Karunia','updated testimonials H2 rendered');
       assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonials-sub').innerText(),'Pengalaman dan ulasan pelanggan yang telah mempercayakan kebutuhan stok usaha mereka kepada KK Underwear.','updated testimonials subheading rendered');
       assert.equal(rawText.includes('CONTOH TESTIMONI'),false,'CONTOH TESTIMONI text absent');
       assert.equal(await page.locator('[data-section="testimonials"] [data-kkg-cta]').count(),0,'no CTA buttons inside testimonials');
@@ -187,7 +188,7 @@ const path = require('node:path');
         const dotSmall=await page.evaluate(()=>Array.from(document.querySelectorAll('.kkg-carousel-dot')).filter(el=>el.offsetParent!==null).some(el=>{const r=el.getBoundingClientRect();return r.width<24||r.height<24;}));
         assert.equal(btnSmall,false,'visible carousel button touch targets >= 44x44 at '+width);
         assert.equal(dotSmall,false,'visible carousel dot targets >= 24x24 at '+width);
-        const sectionsToTest=isMobile?[['#produk',5],['#testimoni',4]]:[['#testimoni',4]];
+        const sectionsToTest=isMobile?[['#produk',5],['#testimoni',3]]:[['#testimoni',3]];
         for(const [secSel,count] of sectionsToTest){
           const sec=page.locator(secSel);
           await sec.scrollIntoViewIfNeeded();
@@ -307,16 +308,21 @@ const path = require('node:path');
       await page.setViewportSize({width,height:1000});
       const res=await page.goto('http://127.0.0.1:4173/?mode=active');
       assert.equal(res.status(),200);
-      assert.equal(await page.locator('[data-section]').count(),9,'active public mode hides unapproved testimonials');
-      assert.equal(await page.locator('[data-section="testimonials"]').count(),0,'no testimonials section in active DOM while unapproved');
-      assert.equal(await page.locator('[data-kkg-lightbox]').count(),0,'no lightbox dialog in active DOM while unapproved');
+      assert.equal(await page.locator('[data-section]').count(),10,'active public mode renders approved testimonials section');
+      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-card').count(),3,'active public mode shows exact 3 approved testimonials');
+      assert.equal(await page.locator('[data-section="testimonials"] .kkg-testimonial-stage-badge').count(),0,'active public mode never renders staging badge');
       const rawActive=await page.locator('.kkg-root').textContent();
-      assert.equal(rawActive.includes('Pak Aan')||rawActive.includes('Anindiya')||rawActive.includes('Hidayati')||rawActive.includes('Algo Jaya'),false,'unapproved partner names absent in active DOM');
+      assert.equal(rawActive.includes('Pak Aan'),false,'removed Pak Aan absent in active DOM');
+      assert.equal(rawActive.includes('Anindiya')&&rawActive.includes('Hidayati')&&rawActive.includes('Algo Jaya'),true,'all 3 approved partner names present in active DOM');
+      const unapprovedRes=await page.goto('http://127.0.0.1:4173/?mode=active&testimonials=unapproved');
+      assert.equal(unapprovedRes.status(),200);
+      assert.equal(await page.locator('[data-section="testimonials"]').count(),0,'unapproved fixture hides testimonials in active DOM');
+      assert.equal(await page.locator('[data-kkg-lightbox]').count(),0,'unapproved fixture omits lightbox in active DOM');
       const emptyRes=await page.goto('http://127.0.0.1:4173/?testimonials=empty');
       assert.equal(emptyRes.status(),200);
       assert.equal(await page.locator('[data-section="testimonials"]').count(),0,'empty dataset hides testimonials even in staging');
     }
-    results.push({activeAndEmptyGating:'unapproved records omitted in active mode and empty datasets omit section cleanly across desktop and mobile'});
+    results.push({activeAndEmptyGating:'active public mode renders 3 approved testimonials without staging badge, while unapproved/empty datasets omit section cleanly across desktop and mobile'});
     // Simulated approved carousel interactive checks (live scroll/swipe/keyboard, single & multi-image lightbox, focus restore, sticky hide, no body overflow lock).
     for(const width of [375,1440]){
       const ctx=await browser.newContext({viewport:{width,height:800}});
@@ -326,9 +332,9 @@ const path = require('node:path');
       // Keyboard ArrowRight/ArrowLeft while focus is inside carousel
       await p.locator('#testimoni [data-kkg-carousel-next]').focus();
       await p.keyboard.press('ArrowRight');
-      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 2 dari 4');
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 2 dari 3');
       await p.keyboard.press('ArrowLeft');
-      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 1 dari 4');
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 1 dari 3');
       // Touch swipe / horizontal scroll-snap simulation moves slide cleanly to Slide 3
       await p.locator('#testimoni [data-kkg-carousel-track]').evaluate(tr=>{
         tr.dispatchEvent(new Event('pointerdown'));
@@ -337,11 +343,11 @@ const path = require('node:path');
         tr.dispatchEvent(new Event('scroll'));
         tr.dispatchEvent(new Event('scrollend'));
       });
-      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 3 dari 4');
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 3 dari 3');
       assert.equal(await p.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').nth(2).getAttribute('aria-current'),'true','swipe/scroll-snap settles cleanly on slide 3 at '+width);
       // Move back to Slide 1 and open single-image Lightbox -> focus containment, no body.style.overflow lock, Escape focus restoration
       await p.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').first().click();
-      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 1 dari 4');
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 1 dari 3');
       await p.locator('#testimoni [data-kkg-carousel-slide]').first().locator('[data-kkg-lightbox-open]').click();
       const lb=p.locator('[data-kkg-lightbox]');
       assert.equal(await lb.evaluate(d=>d.open),true,'lightbox dialog opens natively via showModal at '+width);
@@ -364,7 +370,7 @@ const path = require('node:path');
       assert.equal(await p.evaluate(()=>document.activeElement?.hasAttribute('data-kkg-lightbox-open')&&document.activeElement?.dataset.proofIndex==='0'),true,'closing lightbox returns focus to invoking trigger');
       // Slide 2 simulated multi-image Lightbox + light-dismiss + Close button
       await p.locator('#testimoni [data-kkg-carousel-markers] .kkg-carousel-dot').nth(1).click();
-      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 2 dari 4');
+      await p.waitForFunction(()=>document.querySelector('#testimoni [data-kkg-carousel-status]')?.textContent==='Slide 2 dari 3');
       await p.locator('#testimoni [data-kkg-carousel-slide]').nth(1).locator('[data-kkg-lightbox-open]').click();
       assert.equal(await lb.evaluate(d=>d.open),true,'multi-image lightbox opens at '+width);
       assert.equal(await lb.locator('[data-kkg-lightbox-pages]').isVisible(),true,'multi-image pagination shown');
@@ -372,7 +378,7 @@ const path = require('node:path');
       await lb.locator('[data-kkg-lightbox-next]').click();
       const src2=await lb.locator('.kkg-lightbox-img').getAttribute('src');
       assert.notEqual(src1,src2,'next screenshot control cycles proof image');
-      assert.equal(src2.includes('chat-bunda-hidayati.webp'),true,'second screenshot loaded in multi-image lightbox');
+      assert.equal(src2.includes('chat-algo-jaya.webp'),true,'second screenshot loaded in multi-image lightbox');
       await lb.locator('.kkg-lightbox-img').evaluate(async img=>{if(!img.complete) await new Promise(r=>img.addEventListener('load',r,{once:true}));});
       if(width===1440) await p.screenshot({path:'artifacts/screenshots/desktop-lightbox-1440.png'});
       else await p.screenshot({path:'artifacts/screenshots/mobile-lightbox-375.png'});

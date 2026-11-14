@@ -131,7 +131,7 @@ $total_testimonials = count($testimonials);
     <div class="kkg-container">
         <div class="kkg-center kkg-testimonials-head">
             <p class="kkg-eyebrow">TESTIMONI MITRA</p>
-            <h2 id="kkg-testimonials-title">Cerita Mitra &amp; <em>Testimoni Pelanggan</em></h2>
+            <h2 id="kkg-testimonials-title">Cerita Mitra Kasih Karunia</h2>
             <p class="kkg-testimonials-sub">Pengalaman dan ulasan pelanggan yang telah mempercayakan kebutuhan stok usaha mereka kepada KK Underwear.</p>
         </div>
         <div class="kkg-carousel kkg-carousel--testimonials" data-kkg-carousel data-carousel-scope="always" data-carousel-autoplay="5500" data-carousel-label="Testimoni Mitra" data-track-label="Daftar testimoni mitra">

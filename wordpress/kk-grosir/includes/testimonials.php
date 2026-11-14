@@ -74,30 +74,10 @@ function kkg_normalize_testimonial($raw) {
 }
 
 /**
- * Verified WhatsApp testimonial records (publication stays off until redacted proof images and copy are approved).
+ * Verified and publication-approved WhatsApp testimonial records.
  */
 function kkg_testimonials_data() {
     return array(
-        array(
-            'id' => 'pak-aan',
-            'name' => 'Pak Aan',
-            'category' => 'Mitra Grosir',
-            'quote' => 'Puas mas bagus.',
-            'initials' => 'PA',
-            'order_highlight' => 'Ulasan Kepuasan Pelanggan',
-            'preview_position' => '50% 62%',
-            'chat_proof_images' => array(
-                array(
-                    'rel' => 'assets/testimonials/chat-pak-aan.webp',
-                    'alt' => 'Bukti chat WhatsApp testimoni Pak Aan mengenai kepuasan belanja grosir di KK Underwear',
-                    'width' => 460,
-                    'height' => 920,
-                ),
-            ),
-            'is_verified' => true,
-            'is_approved_for_publication' => false,
-            'is_placeholder' => false,
-        ),
         array(
             'id' => 'cv-anindiya',
             'name' => 'Bunda Lusi — CV. Anindiya',
@@ -115,7 +95,7 @@ function kkg_testimonials_data() {
                 ),
             ),
             'is_verified' => true,
-            'is_approved_for_publication' => false,
+            'is_approved_for_publication' => true,
             'is_placeholder' => false,
         ),
         array(
@@ -129,13 +109,13 @@ function kkg_testimonials_data() {
             'chat_proof_images' => array(
                 array(
                     'rel' => 'assets/testimonials/chat-bunda-hidayati.webp',
-                    'alt' => 'Bukti chat WhatsApp testimoni Bunda Hidayati untuk produk kaos kaki LaParis dengan resi disensor',
+                    'alt' => 'Bukti chat WhatsApp testimoni Bunda Hidayati untuk produk kaos kaki LaParis dengan resi dan kata sensitif disensor',
                     'width' => 460,
                     'height' => 920,
                 ),
             ),
             'is_verified' => true,
-            'is_approved_for_publication' => false,
+            'is_approved_for_publication' => true,
             'is_placeholder' => false,
         ),
         array(
@@ -155,7 +135,7 @@ function kkg_testimonials_data() {
                 ),
             ),
             'is_verified' => true,
-            'is_approved_for_publication' => false,
+            'is_approved_for_publication' => true,
             'is_placeholder' => false,
         ),
     );
